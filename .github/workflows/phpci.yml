@@ -24,9 +24,6 @@ jobs:
         with:
           # Specify the PHP version
           php-version: '8.1.9'
-      - name: Start
-        # Start project
-        run: make start
       - name: Run linter
         # Run Linter
         run: make lint

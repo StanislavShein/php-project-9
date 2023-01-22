@@ -1,6 +1,6 @@
 <?php
 
-namespace PostgreSQLTutorial;
+namespace App;
 
 class Connection {
 
@@ -36,7 +36,5 @@ class Connection {
     }
 
     protected function __construct() {
-
     }
-
 }

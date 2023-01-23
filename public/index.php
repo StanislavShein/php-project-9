@@ -31,15 +31,14 @@ $app->get('/', function ($request, $response) use ($router) {
 })->setName('mainpage');
 
 $app->post('/urls', function ($request, $response) use ($router) {
-    $inputtedURL = $request->getParsedBodyParam('url');
-    $url = $inputtedURL['name'];
+    $inputtedUrl = $request->getParsedBodyParam('url', null);
+    $url = $inputtedUrl['name'];
+    $parsedUrl = parse_url($url);
+    $scheme = $parsedUrl['scheme'];
+    $host = $parsedUrl['host'];
     $current_time = date('F j, Y \a\t g:ia');
 
-    if ($inputtedURL === null) {
-        $this->get('flash')->addMessage('warning', 'Нужно вести адрес веб-страницы');
-        return $response->withRedirect($router->urlFor('mainpage'));
-    }
-
+    // валидация url
     $validator = new Valitron\Validator(array('url' => $url));
     $validator->rule('required', 'url')
               ->rule('url', 'url')
@@ -48,11 +47,12 @@ $app->post('/urls', function ($request, $response) use ($router) {
     if (!($validator->validate())) {
         $params = [
             'invalidURL' => true,
-            'inputtedURL' => $inputtedURL['name']
+            'inputtedURL' => $inputtedUrl['name']
         ];
         return $this->get('renderer')->render($response, 'index.phtml', $params);
     }
 
+    // подключение к БД
     try {
         $pdo = Connection::get()->connect();
         $tableCreator = new PostgreSQLCreateTable($pdo);
@@ -61,15 +61,27 @@ $app->post('/urls', function ($request, $response) use ($router) {
         echo $e->getMessage();
     }
 
-    $insertNewUrl = 'INSERT INTO urls (name, created_at)
-                     VALUES (:name, :time)';
-    $query = $pdo->prepare($insertNewUrl);
-    $query->execute(['name' => $url, 'time' => $current_time]);
+    // поиск url в таблице и добавление, если его нет
+    $queryForCountingUrlsByName = "SELECT COUNT(*) AS counts FROM urls WHERE name='{$scheme}://{$host}'";
+    $resultOfCountingUrlsByName = $pdo->query($queryForCountingUrlsByName);
+    if (($resultOfCountingUrlsByName->fetch())['counts'] === 0) {
+        $queryForInsertNewUrl = "INSERT INTO urls (name, created_at)
+                                 VALUES ('{$scheme}://{$host}', '{$current_time}')";
+        $pdo->query($queryForInsertNewUrl);
+        $this->get('flash')->addMessage('success', 'Страница успешно добавлена');
+    } else {
+        $this->get('flash')->addMessage('warning', 'Страница уже существует');
+        $queryForSearchingIdByUrl = "SELECT id FROM urls WHERE name='{$scheme}://{$host}'";
+        $resultOfSearchingIdByUrl = $pdo->query($queryForSearchingIdByUrl)->fetch();
+        $id = $resultOfSearchingIdByUrl['id'];
+        return $response->withRedirect("/urls/{$id}");
+    }
 
     return $response->withRedirect($router->urlFor('mainpage'), 302);
 });
 
 $app->get('/urls', function ($request, $response) use ($router) {
+    // подключение к БД
     try {
         $pdo = Connection::get()->connect();
         $tableCreator = new PostgreSQLCreateTable($pdo);
@@ -90,5 +102,23 @@ $app->get('/urls', function ($request, $response) use ($router) {
 
     return $this->get('renderer')->render($response, 'urls.phtml', $params);
 })->setName('urls');
+
+$app->get('/urls/{id}', function ($request, $response, $args) use ($router) {
+    // подключение к БД
+    try {
+        $pdo = Connection::get()->connect();
+        $tableCreator = new PostgreSQLCreateTable($pdo);
+        $tables = $tableCreator->createTables();
+    } catch (\PDOException $e) {
+        echo $e->getMessage();
+    }
+
+    $id = $args['id'];
+    $queryForUrlById = "SELECT * FROM urls WHERE id={$id}";
+    $urlData = $pdo->query($queryForUrlById)->fetch();
+    $params = ['url' => ['id' => $id, 'name' => $urlData['name'], 'created_at' => $urlData['created_at']]];
+
+    return $this->get('renderer')->render($response, 'url.phtml', $params);
+})->setName('urlId');
 
 $app->run();

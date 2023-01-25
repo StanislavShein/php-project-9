@@ -8,4 +8,4 @@ start:
 
 
 lint:
-	composer exec --verbose phpcs -- --standard=PSR12 -v public
+	composer exec --verbose phpcs -- --standard=PSR12 --colors -v public

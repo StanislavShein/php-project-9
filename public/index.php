@@ -1,6 +1,5 @@
 <?php
 
-// Подключение автозагрузки через composer
 require __DIR__ . '/../vendor/autoload.php';
 
 use Slim\Factory\AppFactory;
@@ -114,11 +113,45 @@ $app->get('/urls/{id}', function ($request, $response, $args) use ($router) {
     }
 
     $id = $args['id'];
+
     $queryForUrlById = "SELECT * FROM urls WHERE id={$id}";
     $urlData = $pdo->query($queryForUrlById)->fetch();
-    $params = ['url' => ['id' => $id, 'name' => $urlData['name'], 'created_at' => $urlData['created_at']]];
+    $params = [
+        'url' => [
+            'id' => $id,
+            'name' => $urlData['name'],
+            'created_at' => $urlData['created_at']
+        ]
+    ];
+
+    $queryForUrlChecks = "SELECT * FROM url_checks WHERE url_id={$id} ORDER BY id DESC";
+    $resultOfUrlChecks = $pdo->query($queryForUrlChecks);
+    $urlChecks = [];
+    foreach ($resultOfUrlChecks as $row) {
+        $urlChecks[] = ['id' => $row['id'], 'created_at' => $row['created_at']];
+    }
+    $params['urlChecks'] = $urlChecks;
 
     return $this->get('renderer')->render($response, 'url.phtml', $params);
 })->setName('urlId');
+
+$app->post('/urls/{id}/checks', function ($request, $response, $args) use ($router) {
+    // подключение к БД
+    try {
+        $pdo = Connection::get()->connect();
+        $tableCreator = new PostgreSQLCreateTable($pdo);
+        $tables = $tableCreator->createTables();
+    } catch (\PDOException $e) {
+        echo $e->getMessage();
+    }
+
+    $id = $args['id'];
+
+    $current_time = date('F j, Y \a\t g:ia');
+    $queryForNewCheck = "INSERT INTO url_checks (url_id, created_at) VALUES ('{$id}', '{$current_time}')";
+    $pdo->query($queryForNewCheck);
+
+    return $response->withRedirect($router->urlFor('urlId', ['id' => $id]), 302);
+});
 
 $app->run();

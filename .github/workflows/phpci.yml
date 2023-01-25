@@ -1,10 +1,9 @@
 # Name of workflow
 name: PHP CI
 
-# Trigger the workflow on push or pull request
+# Trigger the workflow on push request
 on:
   - push
-  - pull_request
 
 jobs:
   build:
@@ -24,8 +23,8 @@ jobs:
         with:
           # Specify the PHP version
           php-version: '8.1.9'
+      - name: setup all dependencies
+        run: composer install
       - name: Run linter
         # Run Linter
         run: make lint
-        # Publish code coverage on Code Climate
-        # https://github.com/paambaati/codeclimate-action

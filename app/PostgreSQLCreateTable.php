@@ -24,13 +24,25 @@ class PostgreSQLCreateTable {
      * создание таблиц 
      */
     public function createTables() {
-        $sql = 'CREATE TABLE IF NOT EXISTS urls (
+        $queryForTableUrls = 'CREATE TABLE IF NOT EXISTS urls (
                 id serial PRIMARY KEY,
                 name varchar(255),
                 created_at timestamp
         );';
 
-        $this->pdo->exec($sql);
+        $queryForTableUrlChecks = 'CREATE TABLE IF NOT EXISTS url_checks (
+                id serial PRIMARY KEY,
+                url_id serial REFERENCES urls (id),
+                status_code varchar(255),
+                h1 varchar(255),
+                title varchar(255),
+                description varchar(255),
+                created_at timestamp
+        );';
+
+        $this->pdo->exec($queryForTableUrls);
+
+        $this->pdo->exec($queryForTableUrlChecks);
 
         return $this;
     }

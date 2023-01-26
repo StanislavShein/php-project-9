@@ -6,6 +6,7 @@ use Slim\Factory\AppFactory;
 use DI\Container;
 use App\Connection;
 use App\PostgreSQLCreateTable;
+use GuzzleHttp\Client;
 
 session_start();
 
@@ -36,7 +37,8 @@ $app->get('/urls', function ($request, $response) use ($router) {
     $pdo = getConnection();
 
     // поиск url и даты последней проверки
-    $queryForUrlsAndLastCheck = 'SELECT urls.id AS urls_id, name, MAX(url_checks.created_at) as last_check_time FROM urls
+    $queryForUrlsAndLastCheck = 'SELECT urls.id AS urls_id, name, MAX(url_checks.created_at) as last_check_time
+            FROM urls
             LEFT JOIN url_checks ON urls.id = url_checks.url_id
             GROUP BY urls_id
             ORDER BY urls_id DESC';
@@ -83,7 +85,7 @@ $app->get('/urls/{id}', function ($request, $response, $args) use ($router) {
     $resultOfUrlChecks = $pdo->query($queryForUrlChecks);
     $urlChecks = [];
     foreach ($resultOfUrlChecks as $row) {
-        $urlChecks[] = ['id' => $row['id'], 'created_at' => $row['created_at']];
+        $urlChecks[] = ['id' => $row['id'], 'status_code' => $row['status_code'],'created_at' => $row['created_at']];
     }
     $params['urlChecks'] = $urlChecks;
 
@@ -142,9 +144,25 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
 
     $id = $args['id'];
 
+    // поиск url по id
+    $queryForUrlById = "SELECT * FROM urls WHERE id={$id}";
+    $resultOfUrlById = $pdo->query($queryForUrlById)->fetch();
+    $urlName = $resultOfUrlById['name'];
+
+    // создание проверки
+    $client = new Client(['base_uri' => $urlName]);
+    try {
+        $responseUrl = $client->request('GET', '/');
+    } catch (Exception) {
+        $this->get('flash')->addMessage('danger', 'Произошла ошибка при проверке, не удалось подключиться');
+        return $response->withStatus(404)->withRedirect($router->urlFor('urlId', ['id' => $id]));
+    }
+
     // добавление информации о проверке
     $current_time = date("Y-m-d H:i:s");
-    $queryForNewCheck = "INSERT INTO url_checks (url_id, created_at) VALUES ('{$id}', '{$current_time}')";
+    $statusCode = $responseUrl->getStatusCode();
+    $queryForNewCheck = "INSERT INTO url_checks (url_id, status_code, created_at)
+                         VALUES ('{$id}', '{$statusCode}', '{$current_time}')";
     $pdo->query($queryForNewCheck);
     $this->get('flash')->addMessage('success', 'Страница успешно проверена');
 
@@ -152,7 +170,8 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
 });
 
 // функция подключения к БД
-function getConnection() {
+function getConnection()
+{
     try {
         $pdo = Connection::get()->connect();
         $tableCreator = new PostgreSQLCreateTable($pdo);

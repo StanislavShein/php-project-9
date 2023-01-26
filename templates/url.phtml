@@ -14,16 +14,8 @@
     <header class="flex-shrink-0">
         <nav class="navbar navbar-expand-md navbar-dark bg-dark px-3">
             <a class="navbar-brand" href="/">Анализатор страниц</a>
-            <button
-                class="navbar-toggler"
-                type="button"
-                data-toggle="collapse"
-                data-target="#navbarNav"
-                aria-controls="navbarNav"
-                aria-expanded="false"
-                aria-label="Toggle navigation"
-            >
-            <span class="navbar-toggler-icon"></span>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav">
@@ -85,7 +77,7 @@
                         foreach ($urlChecks as $check) : ?>
                             <tr>
                                 <td><?= $check['id'] ?></td>
-                                <td>2</td>
+                                <td><?= $check['status_code'] ?></td>
                                 <td>3</td>
                                 <td>4</td>
                                 <td>5</td>

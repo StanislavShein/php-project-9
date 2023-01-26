@@ -7,6 +7,7 @@ use DI\Container;
 use App\Connection;
 use App\PostgreSQLCreateTable;
 use GuzzleHttp\Client;
+use DiDom\Document;
 
 session_start();
 
@@ -85,7 +86,14 @@ $app->get('/urls/{id}', function ($request, $response, $args) use ($router) {
     $resultOfUrlChecks = $pdo->query($queryForUrlChecks);
     $urlChecks = [];
     foreach ($resultOfUrlChecks as $row) {
-        $urlChecks[] = ['id' => $row['id'], 'status_code' => $row['status_code'],'created_at' => $row['created_at']];
+        $urlChecks[] = [
+            'id' => $row['id'],
+            'status_code' => $row['status_code'],
+            'h1' => $row['h1'],
+            'title' => $row['title'],
+            'description' => $row['description'],
+            'created_at' => $row['created_at']
+        ];
     }
     $params['urlChecks'] = $urlChecks;
 
@@ -149,7 +157,7 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
     $resultOfUrlById = $pdo->query($queryForUrlById)->fetch();
     $urlName = $resultOfUrlById['name'];
 
-    // создание проверки
+    // проверка на код ответа status_code
     $client = new Client(['base_uri' => $urlName]);
     try {
         $responseUrl = $client->request('GET', '/');
@@ -157,12 +165,18 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
         $this->get('flash')->addMessage('danger', 'Произошла ошибка при проверке, не удалось подключиться');
         return $response->withStatus(404)->withRedirect($router->urlFor('urlId', ['id' => $id]));
     }
+    $statusCode = $responseUrl->getStatusCode();
+
+    // проверка на содержимое
+    $document = new Document("{$urlName}", true);
+    $h1 = $document->find('h1')[0]->text();
+    $title = $document->find('title')[0]->text();
+    $description = $document->find('[name]')[0]->content;
 
     // добавление информации о проверке
     $current_time = date("Y-m-d H:i:s");
-    $statusCode = $responseUrl->getStatusCode();
-    $queryForNewCheck = "INSERT INTO url_checks (url_id, status_code, created_at)
-                         VALUES ('{$id}', '{$statusCode}', '{$current_time}')";
+    $queryForNewCheck = "INSERT INTO url_checks (url_id, status_code, h1, title, description, created_at)
+                         VALUES ('{$id}', '{$statusCode}', '{$h1}', '{$title}', '{$description}', '{$current_time}')";
     $pdo->query($queryForNewCheck);
     $this->get('flash')->addMessage('success', 'Страница успешно проверена');
 

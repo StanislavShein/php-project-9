@@ -4,8 +4,6 @@ require __DIR__ . '/../vendor/autoload.php';
 
 use Slim\Factory\AppFactory;
 use DI\Container;
-use App\Connection;
-use App\PostgreSQLCreateTable;
 use GuzzleHttp\Client;
 use DiDom\Document;
 
@@ -70,16 +68,20 @@ $app->get('/urls/{id}', function ($request, $response, $args) use ($router) {
     $id = $args['id'];
 
     // поиск url по id
-    $queryForUrlById = "SELECT * FROM urls WHERE id={$id}";
-    $resultOfUrlById = $pdo->query($queryForUrlById)->fetch();
+    $urlRow = getUrlRowById($pdo, $id);
+    if (is_null($urlRow)) {
+        throw new \Exception("Страница не найдена!");
+    }
+
     $params = [
         'flash' => $messages,
         'url' => [
             'id' => $id,
-            'name' => $resultOfUrlById['name'],
-            'created_at' => $resultOfUrlById['created_at']
+            'name' => $urlRow['name'],
+            'created_at' => $urlRow['created_at']
         ]
     ];
+    
 
     // поиск всех проверок url по id
     $queryForUrlChecks = "SELECT * FROM url_checks WHERE url_id={$id} ORDER BY id DESC";
@@ -103,11 +105,12 @@ $app->get('/urls/{id}', function ($request, $response, $args) use ($router) {
 $app->post('/urls', function ($request, $response) use ($router) {
 
     // получение и парсинг url
-    $inputtedUrl = $request->getParsedBodyParam('url', null);
-    $url = $inputtedUrl['name'];
-    $parsedUrl = parse_url($url);
+    $inputtedUrlData = $request->getParsedBodyParam('url', null);
+    $inputtedUrl = $inputtedUrlData['name'];
+    $parsedUrl = parse_url($inputtedUrl);
     $scheme = $parsedUrl['scheme'];
     $host = $parsedUrl['host'];
+    $url = "{$scheme}://{$host}";
 
     // валидация url
     $validator = new Valitron\Validator(array('url' => $url));
@@ -117,7 +120,7 @@ $app->post('/urls', function ($request, $response) use ($router) {
     if (!($validator->validate())) {
         $params = [
             'invalidURL' => true,
-            'inputtedURL' => $inputtedUrl['name']
+            'inputtedURL' => $inputtedUrl
         ];
         return $this->get('renderer')->render($response, 'index.phtml', $params);
     }
@@ -127,18 +130,20 @@ $app->post('/urls', function ($request, $response) use ($router) {
 
     // поиск url в таблице urls, добавление, если его нет и редирект на страницу с url, если есть
     $current_time = date("Y-m-d H:i:s");
-    $queryForCountingUrlsByName = "SELECT COUNT(*) AS counts FROM urls WHERE name='{$scheme}://{$host}'";
+    $queryForCountingUrlsByName = "SELECT COUNT(*) AS counts FROM urls WHERE name='{$url}'";
     $resultOfCountingUrlsByName = $pdo->query($queryForCountingUrlsByName);
     if (($resultOfCountingUrlsByName->fetch())['counts'] === 0) {
         $queryForInsertNewUrl = "INSERT INTO urls (name, created_at)
                                  VALUES ('{$scheme}://{$host}', '{$current_time}')";
         $pdo->query($queryForInsertNewUrl);
+        $id = getIdByUrl($pdo, $url);
         $this->get('flash')->addMessage('success', 'Страница успешно добавлена');
+
+        return $response->withRedirect($router->urlFor('urlId', ['id' => $id]));
     } else {
+        $id = getIdByUrl($pdo, $url);
         $this->get('flash')->addMessage('warning', 'Страница уже существует');
-        $queryForSearchingIdByUrl = "SELECT id FROM urls WHERE name='{$scheme}://{$host}'";
-        $resultOfSearchingIdByUrl = $pdo->query($queryForSearchingIdByUrl)->fetch();
-        $id = $resultOfSearchingIdByUrl['id'];
+
         return $response->withRedirect("/urls/{$id}");
     }
 
@@ -152,10 +157,7 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
 
     $id = $args['id'];
 
-    // поиск url по id
-    $queryForUrlById = "SELECT * FROM urls WHERE id={$id}";
-    $resultOfUrlById = $pdo->query($queryForUrlById)->fetch();
-    $urlName = $resultOfUrlById['name'];
+    $urlName = getUrlRowById($pdo, $id)['name'];
 
     // проверка на код ответа status_code
     $client = new Client(['base_uri' => $urlName]);
@@ -169,9 +171,17 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
 
     // проверка на содержимое
     $document = new Document("{$urlName}", true);
-    $h1 = $document->find('h1')[0]->text();
-    $title = $document->find('title')[0]->text();
-    $description = $document->find('[name]')[0]->content;
+    if (isset($document->find('h1')[0])) {
+        $h1 = $document->find('h1')[0]->text();
+    } else {
+        $h1 = null;
+    }
+    if (isset($document->find('title')[0])) {
+        $title = $document->find('title')[0]->text();
+    }
+    if (isset($document->find('meta[name=description]')[0])) {
+        $description = $document->find('meta[name=description]')[0]->content;
+    }
 
     // добавление информации о проверке
     $current_time = date("Y-m-d H:i:s");
@@ -182,18 +192,5 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
 
     return $response->withRedirect($router->urlFor('urlId', ['id' => $id]), 302);
 });
-
-// функция подключения к БД
-function getConnection()
-{
-    try {
-        $pdo = Connection::get()->connect();
-        $tableCreator = new PostgreSQLCreateTable($pdo);
-        $tableCreator->createTables();
-        return $pdo;
-    } catch (\PDOException $e) {
-        echo $e->getMessage();
-    }
-}
 
 $app->run();

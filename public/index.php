@@ -32,22 +32,31 @@ $app->get('/', function ($request, $response) use ($router) {
 $app->get('/urls', function ($request, $response) use ($router) {
     $messages = $this->get('flash')->getMessages();
 
-    // подключение к БД
     $pdo = getConnection();
 
-    // поиск url и даты последней проверки
-    $queryForUrlsAndLastCheck = 'SELECT urls.id AS urls_id, name, MAX(url_checks.created_at) as last_check_time
+    // запрос id url, имени url, даты последней проверки и статуса ответа
+    $queryForIdNameLastCheckAndStatusCode =
+           "SELECT urls.id AS urls_id, name, last_check_table.created_at AS last_check_time, status_code
             FROM urls
-            LEFT JOIN url_checks ON urls.id = url_checks.url_id
-            GROUP BY urls_id
-            ORDER BY urls_id DESC';
-    $resultOfUrlsAndLastCheck = $pdo->query($queryForUrlsAndLastCheck);
+            LEFT JOIN
+                (SELECT max_id_table.url_id AS url_id, created_at, status_code
+                FROM
+                    (SELECT url_id, MAX(id) AS max_id
+                    FROM url_checks
+                    GROUP BY url_id) AS max_id_table
+                LEFT JOIN url_checks 
+                ON max_id = url_checks.id) AS last_check_table
+            ON urls.id = last_check_table.url_id
+            ORDER BY urls_id DESC";
+
+    $IdNameLastCheckAndStatusCode = $pdo->query($queryForIdNameLastCheckAndStatusCode);
     $urls = [];
-    foreach ($resultOfUrlsAndLastCheck as $row) {
+    foreach ($IdNameLastCheckAndStatusCode as $row) {
         $urls[] = [
             'id' => $row['urls_id'],
             'name' => $row['name'],
-            'lastCheckTime' => $row['last_check_time']
+            'lastCheckTime' => $row['last_check_time'],
+            'statusCode' => $row['status_code']
         ];
     }
 
@@ -62,12 +71,11 @@ $app->get('/urls', function ($request, $response) use ($router) {
 $app->get('/urls/{id}', function ($request, $response, $args) use ($router) {
     $messages = $this->get('flash')->getMessages();
 
-    // подключение к БД
     $pdo = getConnection();
 
     $id = $args['id'];
 
-    // поиск url по id
+    // поиск строки с url по id
     $urlRow = getUrlRowById($pdo, $id);
     if (is_null($urlRow)) {
         throw new \Exception("Страница не найдена!");
@@ -81,7 +89,6 @@ $app->get('/urls/{id}', function ($request, $response, $args) use ($router) {
             'created_at' => $urlRow['created_at']
         ]
     ];
-    
 
     // поиск всех проверок url по id
     $queryForUrlChecks = "SELECT * FROM url_checks WHERE url_id={$id} ORDER BY id DESC";
@@ -171,23 +178,37 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
 
     // проверка на содержимое
     $document = new Document("{$urlName}", true);
-    if (isset($document->find('h1')[0])) {
-        $h1 = $document->find('h1')[0]->text();
+
+    $h1Elements = $document->find('h1');
+    if (count($h1Elements) > 0) {
+        $h1 = $h1Elements[0]->text();
     } else {
         $h1 = null;
     }
-    if (isset($document->find('title')[0])) {
-        $title = $document->find('title')[0]->text();
+
+    $titleElements = $document->find('title');
+    if (count($titleElements) > 0) {
+        $title = $titleElements[0]->text();
+    } else {
+        $title = null;
     }
-    if (isset($document->find('meta[name=description]')[0])) {
-        $description = $document->find('meta[name=description]')[0]->content;
+
+    $descriptionElements = $document->find('meta[name=description]');
+    if (count($descriptionElements) > 0) {
+        $description = $descriptionElements[0]->content;
+    } else {
+        $description = null;
     }
+
 
     // добавление информации о проверке
     $current_time = date("Y-m-d H:i:s");
-    $queryForNewCheck = "INSERT INTO url_checks (url_id, status_code, h1, title, description, created_at)
-                         VALUES ('{$id}', '{$statusCode}', '{$h1}', '{$title}', '{$description}', '{$current_time}')";
-    $pdo->query($queryForNewCheck);
+
+    $sqlForNewCheck = "INSERT INTO url_checks (url_id, status_code, h1, title, description, created_at)
+                         VALUES (?, ?, ?, ?, ?, ?)";
+    $queryForNewCheck = $pdo->prepare($sqlForNewCheck);
+    $queryForNewCheck->execute([$id, $statusCode, $h1, $title, $description, $current_time]);
+
     $this->get('flash')->addMessage('success', 'Страница успешно проверена');
 
     return $response->withRedirect($router->urlFor('urlId', ['id' => $id]), 302);

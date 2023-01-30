@@ -1,44 +1,33 @@
 <?php
 
 namespace App;
-/**
- * Создание в PostgreSQL таблицы из демонстрации PHP
- */
-class PostgreSQLCreateTable {
 
-    /**
-     * объект PDO 
-     * @var \PDO
-     */
+class PostgreSQLCreateTable
+{
     private $pdo;
 
-    /**
-     * инициализация объекта с объектом \PDO 
-     * @тип параметра $pdo
-     */
-    public function __construct($pdo) {
+    public function __construct($pdo)
+    {
         $this->pdo = $pdo;
     }
 
-    /**
-     * создание таблиц 
-     */
-    public function createTables() {
-        $queryForTableUrls = 'CREATE TABLE IF NOT EXISTS urls (
+    public function createTables()
+    {
+        $queryForTableUrls =
+            'CREATE TABLE IF NOT EXISTS urls (
                 id serial PRIMARY KEY,
                 name varchar(255),
-                created_at timestamp
-        );';
+                created_at timestamp);';
 
-        $queryForTableUrlChecks = 'CREATE TABLE IF NOT EXISTS url_checks (
+        $queryForTableUrlChecks =
+            'CREATE TABLE IF NOT EXISTS url_checks (
                 id serial PRIMARY KEY,
                 url_id serial REFERENCES urls (id),
-                status_code varchar(255),
-                h1 varchar(255),
-                title varchar(255),
-                description varchar(255),
-                created_at timestamp
-        );';
+                status_code int,
+                h1 varchar(10000),
+                title varchar(10000),
+                description varchar(10000),
+                created_at timestamp);';
 
         $this->pdo->exec($queryForTableUrls);
 

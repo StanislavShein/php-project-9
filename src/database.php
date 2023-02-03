@@ -1,22 +1,39 @@
 <?php
 
-use App\Connection;
+use Dotenv\Dotenv;
 use App\PostgreSQLCreateTable;
 
-// функция подключения к БД
 function getConnection()
 {
+    $dotenv = Dotenv::createImmutable(__DIR__ . '/../');
+    $dotenv->load();
+
+    $host = $_ENV['HOST'];
+    $port = $_ENV['PORT'];
+    $dbName = $_ENV['DB_NAME'];
+    $dbUser = $_ENV['DB_USERNAME'];
+    $dbPassword = $_ENV['DB_PASSWORD'];
+
+    $conStr = "pgsql:
+        host={$host};
+        port={$port};
+        dbname={$dbName};
+        user={$dbUser};
+        password={$dbPassword}";
+
     try {
-        $pdo = Connection::get()->connect();
-        $tableCreator = new PostgreSQLCreateTable($pdo);
-        $tableCreator->createTables();
+        $pdo = new PDO($conStr);
+        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+
+        $queryForCreateTables = file_get_contents(__DIR__ . '/../database.sql');
+        $pdo->exec($queryForCreateTables);
+
         return $pdo;
     } catch (\PDOException $e) {
         echo $e->getMessage();
     }
 }
 
-// поиск id по url
 function getIdByUrl($pdo, $url)
 {
     $query = "SELECT id FROM urls WHERE name='{$url}'";
@@ -25,7 +42,6 @@ function getIdByUrl($pdo, $url)
     return $resultOfQuery['id'];
 }
 
-// поиск строки таблицы urls по id
 function getUrlRowById($pdo, $id)
 {
     $query = "SELECT * FROM urls WHERE id={$id}";

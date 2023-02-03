@@ -11,4 +11,4 @@ clear:
 	sudo -u postgres createdb --owner=stanislav hexlet
 
 lint:
-	composer exec --verbose phpcs -- --standard=PSR12 --colors -v public src app
+	composer exec --verbose phpcs -- --standard=PSR12 --colors -v public src

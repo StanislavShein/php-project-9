@@ -1,5 +1,5 @@
-CREATE TABLE urls (
-    id bigint PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS urls (
+    id serial PRIMARY KEY,
     name varchar(255),
     created_at timestamp
 );

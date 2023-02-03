@@ -5,8 +5,8 @@ use App\PostgreSQLCreateTable;
 
 function getConnection()
 {
-    $dotenv = Dotenv::createImmutable(__DIR__ . '/../');
-    $dotenv->load();
+    //$dotenv = Dotenv::createImmutable(__DIR__ . '/../');
+    //$dotenv->load();
 
     $dbHost = $_ENV['PGHOST'];
     $dbPort = $_ENV['PGPORT'];

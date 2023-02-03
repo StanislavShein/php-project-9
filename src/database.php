@@ -16,7 +16,7 @@ function getConnection()
 
 
     // postgresql://${{ PGUSER }}:${{ PGPASSWORD }}@${{ PGHOST }}:${{ PGPORT }}/${{ PGDATABASE }}
-    $conStr = "postgresql://
+    $conStr = "pgsql:
         host={$dbHost};
         port={$dbPort};
         dbname={$dbName};

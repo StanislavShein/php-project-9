@@ -183,21 +183,21 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
     if (count($h1Elements) > 0) {
         $h1 = $h1Elements[0]->text();
     } else {
-        $h1 = null;
+        $h1 = '';
     }
 
     $titleElements = $document->find('title');
     if (count($titleElements) > 0) {
         $title = $titleElements[0]->text();
     } else {
-        $title = null;
+        $title = '';
     }
 
     $descriptionElements = $document->find('meta[name=description]');
     if (count($descriptionElements) > 0) {
         $description = $descriptionElements[0]->content;
     } else {
-        $description = null;
+        $description = '';
     }
 
 

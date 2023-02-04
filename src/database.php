@@ -1,12 +1,11 @@
 <?php
 
 use Dotenv\Dotenv;
-use App\PostgreSQLCreateTable;
 
 function getConnection()
 {
     $dotenv = Dotenv::createImmutable(__DIR__ . '/../');
-    $dotenv->load();
+    $dotenv->safeLoad();
 
     $dbHost = $_ENV['PGHOST'];
     $dbPort = $_ENV['PGPORT'];

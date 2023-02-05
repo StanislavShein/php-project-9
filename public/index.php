@@ -6,6 +6,7 @@ use Slim\Factory\AppFactory;
 use DI\Container;
 use GuzzleHttp\Client;
 use DiDom\Document;
+use olamedia\nokogiri;
 
 session_start();
 
@@ -177,29 +178,32 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
     $statusCode = $responseUrl->getStatusCode();
 
     // проверка на содержимое
-    $document = new Document("{$urlName}", true);
+
+    $body = $responseUrl->getBody();
+    $h1 = '';
+    $title = '';
+    $description = '';
+    
+    $document = new Document("{$body}");
 
     $h1Elements = $document->find('h1');
     if (count($h1Elements) > 0) {
         $h1 = $h1Elements[0]->text();
-    } else {
-        $h1 = '';
-    }
+    } 
 
     $titleElements = $document->find('title');
     if (count($titleElements) > 0) {
         $title = $titleElements[0]->text();
-    } else {
-        $title = '';
     }
 
     $descriptionElements = $document->find('meta[name=description]');
     if (count($descriptionElements) > 0) {
         $description = $descriptionElements[0]->content;
-    } else {
-        $description = '';
     }
 
+    //$saw = new \nokogiri($body);
+
+    //$h1 = $saw->get('h1')->toText();
 
     // добавление информации о проверке
     $current_time = date("Y-m-d H:i:s");

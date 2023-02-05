@@ -22,8 +22,7 @@
         "slim/flash": "^0.4.0",
         "guzzlehttp/guzzle": "^7.0",
         "imangazaliev/didom": "^2.0",
-        "vlucas/phpdotenv": "^5.5",
-        "olamedia/nokogiri": "^2.0"
+        "vlucas/phpdotenv": "^5.5"
     },
     "require-dev": {
         "squizlabs/php_codesniffer": "^3.7"

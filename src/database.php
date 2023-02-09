@@ -41,14 +41,25 @@ function getConnection()
 function getIdByUrl(PDO $pdo, string $url)
 {
     $query = "SELECT id FROM urls WHERE name='{$url}'";
-    $resultOfQuery = $pdo->query($query)->fetch();
+    $resultOfQuery = $pdo->query($query);
 
-    return $resultOfQuery['id'];
+    if (!$resultOfQuery) {
+        throw new \Exception('Ошибочный запрос к базе данных');
+    }
+
+    $data = $resultOfQuery->fetch();
+
+    return $data['id'];
 }
 
 function getUrlRowById(PDO $pdo, string $id)
 {
     $query = "SELECT * FROM urls WHERE id={$id}";
+    $resultOfQuery = $pdo->query($query);
 
-    return $pdo->query($query)->fetch();
+    if (!$resultOfQuery) {
+        throw new \Exception('Ошибочный запрос к базе данных');
+    }
+
+    return $resultOfQuery->fetch();
 }

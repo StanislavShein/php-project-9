@@ -91,7 +91,9 @@ $app->get('/urls/{id}', function ($request, $response, $args) use ($router) {
     ];
 
     // поиск всех проверок url по id
-    $queryForUrlChecks = "SELECT * FROM url_checks WHERE url_id={$id} ORDER BY id DESC";
+    $queryForUrlChecks = "SELECT * FROM url_checks
+                          WHERE url_id={$id}
+                          ORDER BY id DESC";
     $resultOfUrlChecks = $pdo->query($queryForUrlChecks);
     $urlChecks = [];
     foreach ($resultOfUrlChecks as $row) {
@@ -149,9 +151,9 @@ $app->post('/urls', function ($request, $response) use ($router) {
         return $response->withRedirect($router->urlFor('urlId', ['id' => $id]));
     } else {
         $id = getIdByUrl($pdo, $url);
-        $this->get('flash')->addMessage('warning', 'Страница уже существует');
+        $this->get('flash')->addMessage('success', 'Страница уже существует');
 
-        return $response->withRedirect("/urls/{$id}");
+        return $response->withRedirect($router->urlFor('urlId', ['id' => $id]));
     }
 
     return $response->withRedirect($router->urlFor('mainpage'), 302);

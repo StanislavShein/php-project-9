@@ -7,14 +7,14 @@ function getConnection()
     $dotenv = Dotenv::createImmutable(__DIR__ . '/../');
     $dotenv->safeLoad();
 
-    $dbHost = $_ENV['PGHOST'];
-    $dbPort = $_ENV['PGPORT'];
-    $dbName = $_ENV['PGDATABASE'];
-    $dbUser = $_ENV['PGUSER'];
-    $dbPassword = $_ENV['PGPASSWORD'];
+    $databaseUrl = parse_url($_ENV['DATABASE_URL']);
 
+    $dbHost = $databaseUrl['host'];
+    $dbPort = $databaseUrl['port'];
+    $dbName = ltrim($databaseUrl['path'], '/');
+    $dbUser = $databaseUrl['user'];
+    $dbPassword = $databaseUrl['pass'];
 
-    // postgresql://${{ PGUSER }}:${{ PGPASSWORD }}@${{ PGHOST }}:${{ PGPORT }}/${{ PGDATABASE }}
     $conStr = "pgsql:
         host={$dbHost};
         port={$dbPort};

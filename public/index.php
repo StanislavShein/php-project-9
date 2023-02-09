@@ -131,7 +131,7 @@ $app->post('/urls', function ($request, $response) use ($router) {
             'invalidURL' => true,
             'inputtedURL' => $inputtedUrl
         ];
-        return $this->get('renderer')->render($response, 'index.phtml', $params);
+        return $this->get('renderer')->render($response->withStatus(422), 'index.phtml', $params);
     }
 
     // подключение к БД

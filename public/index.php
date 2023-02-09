@@ -186,19 +186,16 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
 
     $document = new Document("{$body}");
 
-    $h1Elements = $document->find('h1');
-    if (count($h1Elements) > 0) {
-        $h1 = $h1Elements[0]->text();
+    if (!is_null($document->first('h1'))) {
+        $h1 = $document->first('h1')->text();
     }
 
-    $titleElements = $document->find('title');
-    if (count($titleElements) > 0) {
-        $title = $titleElements[0]->text();
+    if (!is_null($document->first('title'))) {
+        $title = $document->first('title')->text();
     }
 
-    $descriptionElements = $document->find('meta[name=description]');
-    if (count($descriptionElements) > 0) {
-        $description = $descriptionElements[0]->content;
+    if (!is_null($document->first('meta[name=description]'))) {
+        $description = $document->first('meta[name=description]')->content;
     }
 
     // добавление информации о проверке

@@ -27,6 +27,9 @@ function getConnection()
         $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
 
         $queryForCreateTables = file_get_contents(__DIR__ . '/../database.sql');
+        if (!$queryForCreateTables) {
+            return false;
+        }
         $pdo->exec($queryForCreateTables);
 
         return $pdo;
@@ -35,7 +38,7 @@ function getConnection()
     }
 }
 
-function getIdByUrl($pdo, $url)
+function getIdByUrl(PDO $pdo, string $url)
 {
     $query = "SELECT id FROM urls WHERE name='{$url}'";
     $resultOfQuery = $pdo->query($query)->fetch();
@@ -43,7 +46,7 @@ function getIdByUrl($pdo, $url)
     return $resultOfQuery['id'];
 }
 
-function getUrlRowById($pdo, $id)
+function getUrlRowById(PDO $pdo, string $id)
 {
     $query = "SELECT * FROM urls WHERE id={$id}";
 

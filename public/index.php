@@ -22,14 +22,14 @@ $app->addErrorMiddleware(true, true, true);
 
 $router = $app->getRouteCollector()->getRouteParser();
 
-$app->get('/', function ($request, $response) use ($router) {
+$app->get('/', function ($request, $response) {
     $messages = $this->get('flash')->getMessages();
     $params = ['flash' => $messages];
 
     return $this->get('renderer')->render($response, 'index.phtml', $params);
 })->setName('mainpage');
 
-$app->get('/urls', function ($request, $response) use ($router) {
+$app->get('/urls', function ($request, $response) {
     $messages = $this->get('flash')->getMessages();
 
     $pdo = getConnection();
@@ -68,7 +68,7 @@ $app->get('/urls', function ($request, $response) use ($router) {
     return $this->get('renderer')->render($response, 'urls.phtml', $params);
 })->setName('urls');
 
-$app->get('/urls/{id}', function ($request, $response, $args) use ($router) {
+$app->get('/urls/{id}', function ($request, $response, $args) {
     $messages = $this->get('flash')->getMessages();
 
     $pdo = getConnection();
@@ -156,7 +156,7 @@ $app->post('/urls', function ($request, $response) use ($router) {
         return $response->withRedirect($router->urlFor('urlId', ['id' => $id]));
     }
 
-    return $response->withRedirect($router->urlFor('mainpage'), 302);
+    // return $response->withRedirect($router->urlFor('mainpage'), 302);
 });
 
 $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($router) {

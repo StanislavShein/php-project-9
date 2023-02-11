@@ -1,6 +1,6 @@
 ### Page Analyzer
 
-[Page Analyzer](https://php-project-9-production-d217.up.railway.app/) - a site that analyzes the specified pages for SEO suitability by analogy with PageSpeed Insights
+[Page Analyzer](https://php-project-9-production-d217.up.railway.app/) - a site that analyzes the specified pages for SEO suitability by analogy with [PageSpeed Insights](https://pagespeed.web.dev/)
 
 ### Hexlet tests and linter status:
 

@@ -186,17 +186,9 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
 
     $document = new Document("{$body}");
 
-    if (!is_null($document->first('h1'))) {
-        $h1 = $document->first('h1')->text();
-    }
-
-    if (!is_null($document->first('title'))) {
-        $title = $document->first('title')->text();
-    }
-
-    if (!is_null($document->first('meta[name=description]'))) {
-        $description = $document->first('meta[name=description]')->content;
-    }
+    $h1 = optional($document->first('h1'))->text();
+    $title = optional($document->first('title'))->text();
+    $description = optional($document->first('meta[name=description]'))->content;
 
     // добавление информации о проверке
     $current_time = date("Y-m-d H:i:s");

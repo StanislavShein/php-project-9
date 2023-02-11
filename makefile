@@ -14,3 +14,4 @@ clear:
 
 lint:
 	composer exec --verbose phpcs -- --standard=PSR12 --colors -v public src
+	composer exec --verbose phpstan -- --level=8 analyse public src

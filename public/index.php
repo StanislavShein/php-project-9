@@ -155,8 +155,6 @@ $app->post('/urls', function ($request, $response) use ($router) {
 
         return $response->withRedirect($router->urlFor('urlId', ['id' => $id]));
     }
-
-    // return $response->withRedirect($router->urlFor('mainpage'), 302);
 });
 
 $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($router) {
@@ -189,10 +187,9 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
     $h1 = optional($document->first('h1'))->text();
     $title = optional($document->first('title'))->text();
     $description = optional($document->first('meta[name=description]'))->content;
-
-    // добавление информации о проверке
     $current_time = date("Y-m-d H:i:s");
 
+    // добавление информации о проверке
     $sqlForNewCheck = "INSERT INTO url_checks (url_id, status_code, h1, title, description, created_at)
                          VALUES (?, ?, ?, ?, ?, ?)";
     $queryForNewCheck = $pdo->prepare($sqlForNewCheck);

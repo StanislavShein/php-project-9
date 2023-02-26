@@ -23,10 +23,11 @@ $app->addErrorMiddleware(true, true, true);
 $router = $app->getRouteCollector()->getRouteParser();
 
 $app->get('/', function ($request, $response) {
-    $messages = $this->get('flash')->getMessages();
+    /*$messages = $this->get('flash')->getMessages();
     $params = ['flash' => $messages];
 
-    return $this->get('renderer')->render($response, 'index.phtml', $params);
+    return $this->get('renderer')->render($response, 'mainpage.phtml', $params);*/
+    return $this->get('renderer')->render($response, 'mainpage.phtml');
 })->setName('mainpage');
 
 $app->get('/urls', function ($request, $response) {
@@ -65,8 +66,8 @@ $app->get('/urls', function ($request, $response) {
         'urls' => $urls
     ];
 
-    return $this->get('renderer')->render($response, 'urls.phtml', $params);
-})->setName('urls');
+    return $this->get('renderer')->render($response, 'urls/index.phtml', $params);
+})->setName('urls.index');
 
 $app->get('/urls/{id}', function ($request, $response, $args) {
     $messages = $this->get('flash')->getMessages();
@@ -108,18 +109,28 @@ $app->get('/urls/{id}', function ($request, $response, $args) {
     }
     $params['urlChecks'] = $urlChecks;
 
-    return $this->get('renderer')->render($response, 'url.phtml', $params);
-})->setName('urlId');
+    return $this->get('renderer')->render($response, 'urls/show.phtml', $params);
+})->setName('urls.show');
 
 $app->post('/urls', function ($request, $response) use ($router) {
 
     // получение и парсинг url
     $inputtedUrlData = $request->getParsedBodyParam('url', null);
-    $inputtedUrl = $inputtedUrlData['name'];
-    $parsedUrl = parse_url($inputtedUrl);
-    $scheme = $parsedUrl['scheme'];
-    $host = $parsedUrl['host'];
-    $url = "{$scheme}://{$host}";
+
+    if ($inputtedUrlData['name'] === '') {
+        //$this->get('flash')->addMessage('danger', 'URL не должен быть пустым');
+        $params = ['invalidUrl' => true, 'inputtedUrl' => ''];
+
+        return $this->get('renderer')->render($response->withStatus(422), 'mainpage.phtml', $params);
+    } else {
+        $inputtedUrl = $inputtedUrlData['name'];
+        $parsedUrl = parse_url($inputtedUrl);
+        $scheme = $parsedUrl['scheme'];
+        $host = $parsedUrl['host'];
+        $url = "{$scheme}://{$host}";
+    } 
+
+    //var_dump($inputtedUrlData['name']);
 
     // валидация url
     $validator = new Valitron\Validator(array('url' => $url));
@@ -128,10 +139,10 @@ $app->post('/urls', function ($request, $response) use ($router) {
               ->rule('lengthMax', 'url', 255);
     if (!($validator->validate())) {
         $params = [
-            'invalidURL' => true,
-            'inputtedURL' => $inputtedUrl
+            'invalidUrl' => true,
+            'inputtedUrl' => $inputtedUrl
         ];
-        return $this->get('renderer')->render($response->withStatus(422), 'index.phtml', $params);
+        return $this->get('renderer')->render($response->withStatus(422), 'mainpage.phtml', $params);
     }
 
     // подключение к БД
@@ -148,14 +159,14 @@ $app->post('/urls', function ($request, $response) use ($router) {
         $id = getIdByUrl($pdo, $url);
         $this->get('flash')->addMessage('success', 'Страница успешно добавлена');
 
-        return $response->withRedirect($router->urlFor('urlId', ['id' => $id]));
+        return $response->withRedirect($router->urlFor('urls.show', ['id' => $id]));
     } else {
         $id = getIdByUrl($pdo, $url);
         $this->get('flash')->addMessage('success', 'Страница уже существует');
 
-        return $response->withRedirect($router->urlFor('urlId', ['id' => $id]));
+        return $response->withRedirect($router->urlFor('urls.show', ['id' => $id]));
     }
-});
+})->setName('url.add');
 
 $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($router) {
 
@@ -172,7 +183,7 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
         $responseUrl = $client->request('GET', '/');
     } catch (Exception) {
         $this->get('flash')->addMessage('danger', 'Произошла ошибка при проверке, не удалось подключиться');
-        return $response->withStatus(404)->withRedirect($router->urlFor('urlId', ['id' => $id]));
+        return $response->withStatus(404)->withRedirect($router->urlFor('urls.show', ['id' => $id]));
     }
     $statusCode = $responseUrl->getStatusCode();
 
@@ -197,7 +208,7 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
 
     $this->get('flash')->addMessage('success', 'Страница успешно проверена');
 
-    return $response->withRedirect($router->urlFor('urlId', ['id' => $id]), 302);
-});
+    return $response->withRedirect($router->urlFor('urls.show', ['id' => $id]), 302);
+})->setName('url.check');
 
 $app->run();

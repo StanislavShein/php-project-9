@@ -62,16 +62,16 @@
                           <input
                             type="text"
                             name="url[name]"
-                            value="<?= isset($inputtedURL) ? $inputtedURL : ''; ?>"
-                            class="form-control form-control-lg<?= isset($invalidURL) ? ' is-invalid' : ''; ?>"
+                            value="<?= isset($inputtedUrl) ? $inputtedUrl : ''; ?>"
+                            class="form-control form-control-lg<?= isset($invalidUrl) ? ' is-invalid' : ''; ?>"
                             placeholder="https://www.example.com"
                           >
-                          <?php if (isset($invalidURL) && ($inputtedURL !== '')) : ?>
+                          <?php if (isset($invalidUrl) && ($inputtedUrl !== '')) : ?>
                               <div class="invalid-feedback">
                                   Некорректный URL
                               </div>
                           <?php endif; ?>
-                          <?php if (isset($invalidURL) && ($inputtedURL === '')) : ?>
+                          <?php if (isset($invalidUrl) && ($inputtedUrl === '')) : ?>
                               <div class="invalid-feedback">
                                   URL не должен быть пустым
                               </div>

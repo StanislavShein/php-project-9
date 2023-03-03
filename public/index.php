@@ -23,10 +23,6 @@ $app->addErrorMiddleware(true, true, true);
 $router = $app->getRouteCollector()->getRouteParser();
 
 $app->get('/', function ($request, $response) {
-    /*$messages = $this->get('flash')->getMessages();
-    $params = ['flash' => $messages];
-
-    return $this->get('renderer')->render($response, 'mainpage.phtml', $params);*/
     return $this->get('renderer')->render($response, 'mainpage.phtml');
 })->setName('mainpage');
 
@@ -118,7 +114,6 @@ $app->post('/urls', function ($request, $response) use ($router) {
     $inputtedUrlData = $request->getParsedBodyParam('url', null);
 
     if ($inputtedUrlData['name'] === '') {
-        //$this->get('flash')->addMessage('danger', 'URL не должен быть пустым');
         $params = ['invalidUrl' => true, 'inputtedUrl' => ''];
 
         return $this->get('renderer')->render($response->withStatus(422), 'mainpage.phtml', $params);
@@ -130,7 +125,6 @@ $app->post('/urls', function ($request, $response) use ($router) {
         $url = "{$scheme}://{$host}";
     } 
 
-    //var_dump($inputtedUrlData['name']);
 
     // валидация url
     $validator = new Valitron\Validator(array('url' => $url));

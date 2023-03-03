@@ -123,8 +123,7 @@ $app->post('/urls', function ($request, $response) use ($router) {
         $scheme = $parsedUrl['scheme'];
         $host = $parsedUrl['host'];
         $url = "{$scheme}://{$host}";
-    } 
-
+    }
 
     // валидация url
     $validator = new Valitron\Validator(array('url' => $url));

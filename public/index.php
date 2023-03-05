@@ -6,6 +6,7 @@ use Slim\Factory\AppFactory;
 use DI\Container;
 use GuzzleHttp\Client;
 use DiDom\Document;
+use illuminate\support;
 
 session_start();
 
@@ -182,15 +183,13 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
 
     // проверка на содержимое
     $body = $responseUrl->getBody();
-    $h1 = '';
-    $title = '';
-    $description = '';
 
     $document = new Document("{$body}");
 
     $h1 = optional($document->first('h1'))->text();
     $title = optional($document->first('title'))->text();
     $description = optional($document->first('meta[name=description]'))->content;
+    date_default_timezone_set('Europe/Istanbul');
     $current_time = date("Y-m-d H:i:s");
 
     // добавление информации о проверке

@@ -22,10 +22,10 @@
                             <a href="/urls/<?= $url['id'] ?>"><?= $url['name'] ?></a>
                         </td>
                         <td>
-                            <?= $url['lastCheckTime'] ?>
+                            <?= $url['created_at'] ?? '' ?>
                         </td>
                         <td>
-                            <?= $url['statusCode'] ?>
+                            <?= $url['status_code'] ?? '' ?>
                         </td>
                     </tr>
                 <?php endforeach;

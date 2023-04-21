@@ -7,6 +7,16 @@ use DI\Container;
 use GuzzleHttp\Client;
 use DiDom\Document;
 use illuminate\support;
+use function Database\getConnection as getConnection;
+use function Database\getAllUrls as getAllUrls;
+use function Database\getIdByUrl as getIdByUrl;
+use function Database\getUrlRowById as getUrlRowById;
+use function Database\getLastChecks;
+use function Database\getChecksByUrlId;
+use function Database\countUrlsByName;
+use function Database\insertNewUrl;
+use function Database\insertNewCheck;
+
 
 session_start();
 
@@ -33,34 +43,17 @@ $app->get('/urls', function ($request, $response) {
     $pdo = getConnection();
 
     // запрос id url, имени url, даты последней проверки и статуса ответа
-    $queryForIdNameLastCheckAndStatusCode =
-           "SELECT urls.id AS urls_id, name, last_check_table.created_at AS last_check_time, status_code
-            FROM urls
-            LEFT JOIN
-                (SELECT max_id_table.url_id AS url_id, created_at, status_code
-                FROM
-                    (SELECT url_id, MAX(id) AS max_id
-                    FROM url_checks
-                    GROUP BY url_id) AS max_id_table
-                LEFT JOIN url_checks 
-                ON max_id = url_checks.id) AS last_check_table
-            ON urls.id = last_check_table.url_id
-            ORDER BY urls_id DESC";
-
-    $IdNameLastCheckAndStatusCode = $pdo->query($queryForIdNameLastCheckAndStatusCode);
-    $urls = [];
-    foreach ($IdNameLastCheckAndStatusCode as $row) {
-        $urls[] = [
-            'id' => $row['urls_id'],
-            'name' => $row['name'],
-            'lastCheckTime' => $row['last_check_time'],
-            'statusCode' => $row['status_code']
-        ];
+    $allUrls = getAllUrls($pdo);
+    $lastChecks = getLastChecks($pdo);
+    foreach ($lastChecks as $key => $value) {
+        if (array_key_exists($key, $allUrls)) {
+            $allUrls[$key] = array_merge($allUrls[$key], $value);
+        }
     }
 
     $params = [
         'flash' => $messages,
-        'urls' => $urls
+        'urls' => array_reverse($allUrls)
     ];
 
     return $this->get('renderer')->render($response, 'urls/index.phtml', $params);
@@ -70,7 +63,6 @@ $app->get('/urls/{id}', function ($request, $response, $args) {
     $messages = $this->get('flash')->getMessages();
 
     $pdo = getConnection();
-
     $id = $args['id'];
 
     // поиск строки с url по id
@@ -89,10 +81,7 @@ $app->get('/urls/{id}', function ($request, $response, $args) {
     ];
 
     // поиск всех проверок url по id
-    $queryForUrlChecks = "SELECT * FROM url_checks
-                          WHERE url_id={$id}
-                          ORDER BY id DESC";
-    $resultOfUrlChecks = $pdo->query($queryForUrlChecks);
+    $resultOfUrlChecks = getChecksByUrlId($pdo, $id);
     $urlChecks = [];
     foreach ($resultOfUrlChecks as $row) {
         $urlChecks[] = [
@@ -139,36 +128,26 @@ $app->post('/urls', function ($request, $response) use ($router) {
         return $this->get('renderer')->render($response->withStatus(422), 'mainpage.phtml', $params);
     }
 
-    // подключение к БД
     $pdo = getConnection();
 
     // поиск url в таблице urls, добавление, если его нет и редирект на страницу с url, если есть
     $current_time = date("Y-m-d H:i:s");
-    $queryForCountingUrlsByName = "SELECT COUNT(*) AS counts FROM urls WHERE name='{$url}'";
-    $resultOfCountingUrlsByName = $pdo->query($queryForCountingUrlsByName);
-    if (($resultOfCountingUrlsByName->fetch())['counts'] === 0) {
-        $queryForInsertNewUrl = "INSERT INTO urls (name, created_at)
-                                 VALUES ('{$scheme}://{$host}', '{$current_time}')";
-        $pdo->query($queryForInsertNewUrl);
-        $id = getIdByUrl($pdo, $url);
+
+    if ((countUrlsByName($pdo, $url)->fetch())['counts'] === 0) {
+        insertNewUrl($pdo, $scheme, $host, $current_time);
         $this->get('flash')->addMessage('success', 'Страница успешно добавлена');
-
-        return $response->withRedirect($router->urlFor('urls.show', ['id' => $id]));
     } else {
-        $id = getIdByUrl($pdo, $url);
         $this->get('flash')->addMessage('success', 'Страница уже существует');
-
-        return $response->withRedirect($router->urlFor('urls.show', ['id' => $id]));
     }
-})->setName('url.add');
+
+    $id = getIdByUrl($pdo, $url);
+    return $response->withRedirect($router->urlFor('urls.show', ['id' => $id]));
+})->setName('urls.store');
 
 $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($router) {
 
-    // подключение к БД
     $pdo = getConnection();
-
     $id = $args['id'];
-
     $urlName = getUrlRowById($pdo, $id)['name'];
 
     // проверка на код ответа status_code
@@ -189,18 +168,14 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
     $h1 = optional($document->first('h1'))->text();
     $title = optional($document->first('title'))->text();
     $description = optional($document->first('meta[name=description]'))->content;
-    date_default_timezone_set('Europe/Istanbul');
     $current_time = date("Y-m-d H:i:s");
 
     // добавление информации о проверке
-    $sqlForNewCheck = "INSERT INTO url_checks (url_id, status_code, h1, title, description, created_at)
-                         VALUES (?, ?, ?, ?, ?, ?)";
-    $queryForNewCheck = $pdo->prepare($sqlForNewCheck);
-    $queryForNewCheck->execute([$id, $statusCode, $h1, $title, $description, $current_time]);
+    insertNewCheck($pdo, $id, $statusCode, $h1, $title, $description, $current_time);
 
     $this->get('flash')->addMessage('success', 'Страница успешно проверена');
 
     return $response->withRedirect($router->urlFor('urls.show', ['id' => $id]), 302);
-})->setName('url.check');
+})->setName('urls.id.check');
 
 $app->run();

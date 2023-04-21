@@ -1,5 +1,7 @@
 <?php
 
+namespace Database;
+
 use Dotenv\Dotenv;
 
 function getConnection()
@@ -23,7 +25,7 @@ function getConnection()
         password={$dbPassword}";
 
     try {
-        $pdo = new PDO($conStr);
+        $pdo = new \PDO($conStr);
         $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
 
         $queryForCreateTables = file_get_contents(__DIR__ . '/../database.sql');
@@ -38,28 +40,102 @@ function getConnection()
     }
 }
 
-function getIdByUrl(PDO $pdo, string $url)
+function getAllUrls(\PDO $pdo)
 {
-    $query = "SELECT id FROM urls WHERE name='{$url}'";
-    $resultOfQuery = $pdo->query($query);
+    $query = "SELECT * FROM urls";
+    $result = $pdo->query($query);
 
-    if (!$resultOfQuery) {
+    if (!$result) {
         throw new \Exception('Ошибочный запрос к базе данных');
     }
 
-    $data = $resultOfQuery->fetch();
+    return $result->fetchAll(\PDO::FETCH_ASSOC);
+}
+
+function getIdByUrl(\PDO $pdo, string $url): int
+{
+    $query = "SELECT id FROM urls WHERE name='{$url}'";
+    $result = $pdo->query($query);
+
+    if (!$result) {
+        throw new \Exception('Ошибочный запрос к базе данных');
+    }
+
+    $data = $result->fetch();
 
     return $data['id'];
 }
 
-function getUrlRowById(PDO $pdo, string $id)
+function getUrlRowById(\PDO $pdo, string $id): array
 {
     $query = "SELECT * FROM urls WHERE id={$id}";
-    $resultOfQuery = $pdo->query($query);
+    $result = $pdo->query($query);
 
-    if (!$resultOfQuery) {
+    if (!$result) {
         throw new \Exception('Ошибочный запрос к базе данных');
     }
 
-    return $resultOfQuery->fetch();
+    return $result->fetch();
+}
+
+function getLastChecks(\PDO $pdo)
+{
+    $query = "SELECT DISTINCT ON (url_id) url_id, created_at, status_code
+              FROM url_checks
+              ORDER BY url_id, created_at DESC;";
+    $result = $pdo->query($query); //->fetchAll(\PDO::FETCH_ASSOC);
+
+    if (!$result) {
+        throw new \Exception('Ошибочный запрос к базе данных');
+    }
+
+    return $result->fetchAll(\PDO::FETCH_ASSOC);
+}
+
+function getChecksByUrlId(\PDO $pdo, int $id)
+{
+    $query = "SELECT * FROM url_checks
+              WHERE url_id={$id}
+              ORDER BY id DESC";
+    $result = $pdo->query($query);
+
+    if (!$result) {
+        throw new \Exception('Ошибочный запрос к базе данных');
+    }
+
+    return $result;
+}
+
+function countUrlsByName(\PDO $pdo, string $url)
+{
+    $query = "SELECT COUNT(*) AS counts FROM urls WHERE name='{$url}'";
+    $result = $pdo->query($query);
+
+    if (!$result) {
+        throw new \Exception('Ошибочный запрос к базе данных');
+    }
+
+    return $result;
+}
+
+function insertNewUrl(\PDO $pdo, $scheme, $host, $current_time)
+{
+    $query = "INSERT INTO urls (name, created_at)
+              VALUES ('{$scheme}://{$host}', '{$current_time}')";
+    $result = $pdo->query($query);
+
+    if (!$result) {
+        throw new \Exception('Ошибочный запрос к базе данных');
+    }
+}
+
+function insertNewCheck(\PDO $pdo, $id, $statusCode, $h1, $title, $description, $current_time)
+{
+    $query = "INSERT INTO url_checks (url_id, status_code, h1, title, description, created_at)
+              VALUES (?, ?, ?, ?, ?, ?)";
+    $result = $pdo->prepare($query)->execute([$id, $statusCode, $h1, $title, $description, $current_time]);
+
+    if (!$result) {
+        throw new \Exception('Ошибочный запрос к базе данных');
+    }
 }

@@ -6,7 +6,7 @@ use Slim\Factory\AppFactory;
 use DI\Container;
 use GuzzleHttp\Client;
 use DiDom\Document;
-use illuminate\support;
+use Illuminate\Support;
 use function Database\getConnection as getConnection;
 use function Database\getAllUrls as getAllUrls;
 use function Database\getIdByUrl as getIdByUrl;
@@ -67,9 +67,6 @@ $app->get('/urls/{id}', function ($request, $response, $args) {
 
     // поиск строки с url по id
     $urlRow = getUrlRowById($pdo, $id);
-    if (is_null($urlRow)) {
-        throw new \Exception("Страница не найдена!");
-    }
 
     $params = [
         'flash' => $messages,

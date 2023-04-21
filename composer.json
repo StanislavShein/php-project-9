@@ -24,7 +24,7 @@
         "guzzlehttp/guzzle": "^7.0",
         "imangazaliev/didom": "^2.0",
         "vlucas/phpdotenv": "^5.5",
-        "illuminate/support": "^9.51",
+        "illuminate/support": "^9.52",
         "slim/twig-view": "^3.3"
     },
     "require-dev": {

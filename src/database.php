@@ -118,7 +118,7 @@ function countUrlsByName(\PDO $pdo, string $url)
     return $result;
 }
 
-function insertNewUrl(\PDO $pdo, $scheme, $host, $current_time)
+function insertNewUrl(\PDO $pdo, string $scheme, string $host, string $current_time): void
 {
     $query = "INSERT INTO urls (name, created_at)
               VALUES ('{$scheme}://{$host}', '{$current_time}')";
@@ -129,7 +129,7 @@ function insertNewUrl(\PDO $pdo, $scheme, $host, $current_time)
     }
 }
 
-function insertNewCheck(\PDO $pdo, $id, $statusCode, $h1, $title, $description, $current_time)
+function insertNewCheck(\PDO $pdo, int $id, int $statusCode, string $h1, string $title, string $description, string $current_time): void
 {
     $query = "INSERT INTO url_checks (url_id, status_code, h1, title, description, created_at)
               VALUES (?, ?, ?, ?, ?, ?)";

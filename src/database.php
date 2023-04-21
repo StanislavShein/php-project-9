@@ -52,7 +52,7 @@ function getAllUrls(\PDO $pdo)
     return $result->fetchAll(\PDO::FETCH_ASSOC);
 }
 
-function getIdByUrl(\PDO $pdo, string $url): int
+function getIdByUrl(\PDO $pdo, string $url): string
 {
     $query = "SELECT id FROM urls WHERE name='{$url}'";
     $result = $pdo->query($query);
@@ -129,8 +129,15 @@ function insertNewUrl(\PDO $pdo, string $scheme, string $host, string $current_t
     }
 }
 
-function insertNewCheck(\PDO $pdo, int $id, int $statusCode, string $h1, string $title, string $description, string $current_time): void
-{
+function insertNewCheck(
+    \PDO $pdo,
+    int $id,
+    int $statusCode,
+    string $h1,
+    string $title,
+    string $description,
+    string $current_time
+): void {
     $query = "INSERT INTO url_checks (url_id, status_code, h1, title, description, created_at)
               VALUES (?, ?, ?, ?, ?, ?)";
     $result = $pdo->prepare($query)->execute([$id, $statusCode, $h1, $title, $description, $current_time]);

@@ -34,14 +34,15 @@ $app->addErrorMiddleware(true, true, true);
 $router = $app->getRouteCollector()->getRouteParser();
 
 $app->get('/', function ($request, $response) {
-    return $this->get('renderer')->render($response, 'mainpage.phtml');
+    $params = ['activeMenu' => 'main'];
+    return $this->get('renderer')->render($response, 'mainpage.phtml', $params);
 })->setName('mainpage');
 
 $app->get('/urls', function ($request, $response) {
     $messages = $this->get('flash')->getMessages();
 
     $pdo = getConnection();
-
+ 
     // запрос id url, имени url, даты последней проверки и статуса ответа
     $allUrls = getAllUrls($pdo);
     $lastChecks = getLastChecks($pdo);
@@ -53,7 +54,8 @@ $app->get('/urls', function ($request, $response) {
 
     $params = [
         'flash' => $messages,
-        'urls' => array_reverse($allUrls)
+        'urls' => array_reverse($allUrls),
+        'activeMenu' => 'urls'
     ];
 
     return $this->get('renderer')->render($response, 'urls/index.phtml', $params);
@@ -100,6 +102,19 @@ $app->post('/urls', function ($request, $response) use ($router) {
     // получение и парсинг url
     $inputtedUrlData = $request->getParsedBodyParam('url', null);
 
+    // валидация url
+    $validator = new Valitron\Validator($inputtedUrlData);
+    $validator->rule('required', 'url')
+              ->rule('url', 'url')
+              ->rule('lengthMax', 'url', 255);
+    if (!($validator->validate())) {
+        $params = [
+            'invalidUrl' => true,
+            'inputtedUrl' => $inputtedUrlData['name']
+        ];
+        return $this->get('renderer')->render($response->withStatus(422), 'mainpage.phtml', $params);
+    }
+
     if ($inputtedUrlData['name'] === '') {
         $params = ['invalidUrl' => true, 'inputtedUrl' => ''];
 
@@ -112,18 +127,7 @@ $app->post('/urls', function ($request, $response) use ($router) {
         $url = "{$scheme}://{$host}";
     }
 
-    // валидация url
-    $validator = new Valitron\Validator(array('url' => $url));
-    $validator->rule('required', 'url')
-              ->rule('url', 'url')
-              ->rule('lengthMax', 'url', 255);
-    if (!($validator->validate())) {
-        $params = [
-            'invalidUrl' => true,
-            'inputtedUrl' => $inputtedUrl
-        ];
-        return $this->get('renderer')->render($response->withStatus(422), 'mainpage.phtml', $params);
-    }
+    
 
     $pdo = getConnection();
 
@@ -162,9 +166,9 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
 
     $document = new Document("{$body}");
 
-    $h1 = optional($document->first('h1'))->text();
-    $title = optional($document->first('title'))->text();
-    $description = optional($document->first('meta[name=description]'))->content;
+    $h1 = (!is_null($responseUrl)) ? optional($document->first('h1'))->text() : '';
+    $title = (!is_null($responseUrl)) ? optional($document->first('title'))->text() : '';
+    $description = (!is_null($responseUrl)) ? optional($document->first('meta[name=description]'))->content : '';
     $current_time = date("Y-m-d H:i:s");
 
     // добавление информации о проверке

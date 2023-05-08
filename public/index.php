@@ -42,7 +42,7 @@ $app->get('/urls', function ($request, $response) {
     $messages = $this->get('flash')->getMessages();
 
     $pdo = getConnection();
- 
+
     // запрос id url, имени url, даты последней проверки и статуса ответа
     $allUrls = getAllUrls($pdo);
     $lastChecks = getLastChecks($pdo);
@@ -104,9 +104,9 @@ $app->post('/urls', function ($request, $response) use ($router) {
 
     // валидация url
     $validator = new Valitron\Validator($inputtedUrlData);
-    $validator->rule('required', 'url')
-              ->rule('url', 'url')
-              ->rule('lengthMax', 'url', 255);
+    $validator->rule('required', 'name')
+              ->rule('url', 'name')
+              ->rule('lengthMax', 'name', 255);
     if (!($validator->validate())) {
         $params = [
             'invalidUrl' => true,
@@ -126,8 +126,6 @@ $app->post('/urls', function ($request, $response) use ($router) {
         $host = $parsedUrl['host'];
         $url = "{$scheme}://{$host}";
     }
-
-    
 
     $pdo = getConnection();
 

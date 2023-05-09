@@ -70,6 +70,10 @@ $app->get('/urls/{id}', function ($request, $response, $args) {
     // поиск строки с url по id
     $urlRow = getUrlRowById($pdo, $id);
 
+    if (!$urlRow) {
+        return $this->get('renderer')->render($response, 'error404.phtml');
+    }
+
     $params = [
         'flash' => $messages,
         'url' => [
@@ -164,9 +168,9 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
 
     $document = new Document("{$body}");
 
-    $h1 = (!is_null($responseUrl)) ? optional($document->first('h1'))->text() : '';
-    $title = (!is_null($responseUrl)) ? optional($document->first('title'))->text() : '';
-    $description = (!is_null($responseUrl)) ? optional($document->first('meta[name=description]'))->content : '';
+    $h1 = (optional($document->first('h1'))->text()) ?? '';
+    $title = (optional($document->first('title'))->text()) ?? '';
+    $description = (optional($document->first('meta[name=description]'))->content) ?? '';
     $current_time = date("Y-m-d H:i:s");
 
     // добавление информации о проверке

@@ -66,7 +66,7 @@ function getIdByUrl(\PDO $pdo, string $url): string
     return $data['id'];
 }
 
-function getUrlRowById(\PDO $pdo, string $id): array
+function getUrlRowById(\PDO $pdo, string $id)
 {
     $query = "SELECT * FROM urls WHERE id={$id}";
     $result = $pdo->query($query);
@@ -83,7 +83,7 @@ function getLastChecks(\PDO $pdo)
     $query = "SELECT DISTINCT ON (url_id) url_id, created_at, status_code
               FROM url_checks
               ORDER BY url_id, created_at DESC;";
-    $result = $pdo->query($query); //->fetchAll(\PDO::FETCH_ASSOC);
+    $result = $pdo->query($query);
 
     if (!$result) {
         throw new \Exception('Ошибочный запрос к базе данных');

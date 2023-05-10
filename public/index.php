@@ -5,7 +5,9 @@ require __DIR__ . '/../vendor/autoload.php';
 use Slim\Factory\AppFactory;
 use DI\Container;
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\RequestException;
 use DiDom\Document;
+use GuzzleHttp\Exception\ConnectException;
 use Illuminate\Support;
 use function Database\getConnection as getConnection;
 use function Database\getAllUrls as getAllUrls;
@@ -46,15 +48,20 @@ $app->get('/urls', function ($request, $response) {
     // запрос id url, имени url, даты последней проверки и статуса ответа
     $allUrls = getAllUrls($pdo);
     $lastChecks = getLastChecks($pdo);
-    foreach ($lastChecks as $key => $value) {
-        if (array_key_exists($key, $allUrls)) {
-            $allUrls[$key] = array_merge($allUrls[$key], $value);
+
+    $mix = array_map(function ($url) use ($lastChecks) {
+        foreach ($lastChecks as $check) {
+            if ($url['id'] === $check['url_id']) {
+                $url['last_check_time'] = $check['created_at'];
+                $url['status_code'] = $check['status_code'];
+            }
         }
-    }
+        return $url;
+    }, $allUrls);
 
     $params = [
         'flash' => $messages,
-        'urls' => array_reverse($allUrls),
+        'urls' => $mix,
         'activeMenu' => 'urls'
     ];
 
@@ -153,19 +160,21 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
     $id = $args['id'];
     $urlName = getUrlRowById($pdo, $id)['name'];
 
-    // проверка на код ответа status_code
     $client = new Client(['base_uri' => $urlName]);
     try {
         $responseUrl = $client->request('GET', '/');
-    } catch (Exception) {
+        $this->get('flash')->addMessage('success', 'Страница успешно проверена');
+    } catch (RequestException $e) {
+        $this->get('flash')->addMessage('warning', 'Проверка выполнена успешно, но сервер ответил с ошибкой');
+        return $response->withRedirect($router->urlFor('urls.show', ['id' => $id]));
+    } catch (ConnectException $e) {
         $this->get('flash')->addMessage('danger', 'Произошла ошибка при проверке, не удалось подключиться');
-        return $response->withStatus(404)->withRedirect($router->urlFor('urls.show', ['id' => $id]));
+        return $response->withRedirect($router->urlFor('urls.show', ['id' => $id]));
     }
+
     $statusCode = $responseUrl->getStatusCode();
 
-    // проверка на содержимое
     $body = $responseUrl->getBody();
-
     $document = new Document("{$body}");
 
     $h1 = (optional($document->first('h1'))->text()) ?? '';
@@ -175,8 +184,6 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
 
     // добавление информации о проверке
     insertNewCheck($pdo, $id, $statusCode, $h1, $title, $description, $current_time);
-
-    $this->get('flash')->addMessage('success', 'Страница успешно проверена');
 
     return $response->withRedirect($router->urlFor('urls.show', ['id' => $id]), 302);
 })->setName('urls.id.check');

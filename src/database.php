@@ -42,7 +42,7 @@ function getConnection()
 
 function getAllUrls(\PDO $pdo)
 {
-    $query = "SELECT * FROM urls";
+    $query = "SELECT id, name FROM urls ORDER BY created_at DESC";
     $result = $pdo->query($query);
 
     if (!$result) {

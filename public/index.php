@@ -172,11 +172,10 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
         return $response->withRedirect($router->urlFor('urls.show', ['id' => $id]));
     }
 
-    $statusCode = $responseUrl->getStatusCode();
-
-    $body = $responseUrl->getBody();
+    $body = (!is_null($responseUrl)) ? $responseUrl->getBody() : '';
     $document = new Document("{$body}");
 
+    $statusCode = (!is_null($responseUrl)) ? $responseUrl->getStatusCode() : '';
     $h1 = (optional($document->first('h1'))->text()) ?? '';
     $title = (optional($document->first('title'))->text()) ?? '';
     $description = (optional($document->first('meta[name=description]'))->content) ?? '';

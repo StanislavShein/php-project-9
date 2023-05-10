@@ -166,7 +166,7 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
         $this->get('flash')->addMessage('success', 'Страница успешно проверена');
     } catch (RequestException $e) {
         $this->get('flash')->addMessage('warning', 'Проверка выполнена успешно, но сервер ответил с ошибкой');
-        return $response->withRedirect($router->urlFor('urls.show', ['id' => $id]));
+        $responseUrl = $e->getResponse();
     } catch (ConnectException $e) {
         $this->get('flash')->addMessage('danger', 'Произошла ошибка при проверке, не удалось подключиться');
         return $response->withRedirect($router->urlFor('urls.show', ['id' => $id]));

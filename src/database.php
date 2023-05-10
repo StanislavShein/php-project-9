@@ -132,7 +132,7 @@ function insertNewUrl(\PDO $pdo, string $scheme, string $host, string $current_t
 function insertNewCheck(
     \PDO $pdo,
     int $id,
-    int $statusCode,
+    string $statusCode,
     string $h1,
     string $title,
     string $description,

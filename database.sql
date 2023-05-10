@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS urls (
 CREATE TABLE IF NOT EXISTS url_checks (
     id serial PRIMARY KEY,
     url_id serial REFERENCES urls (id),
-    status_code varchar(10000),
+    status_code int,
     h1 varchar(10000),
     title varchar(10000),
     description varchar(10000),

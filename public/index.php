@@ -175,7 +175,7 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
     $body = (!is_null($responseUrl)) ? $responseUrl->getBody() : '';
     $document = new Document("{$body}");
 
-    $statusCode = (!is_null($responseUrl)) ? $responseUrl->getStatusCode() : '';
+    $statusCode = (!is_null($responseUrl)) ? $responseUrl->getStatusCode() : null;
     $h1 = (optional($document->first('h1'))->text()) ?? '';
     $title = (optional($document->first('title'))->text()) ?? '';
     $description = (optional($document->first('meta[name=description]'))->content) ?? '';

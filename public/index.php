@@ -9,15 +9,15 @@ use GuzzleHttp\Exception\RequestException;
 use DiDom\Document;
 use GuzzleHttp\Exception\ConnectException;
 use Illuminate\Support;
-use function Database\getConnection as getConnection;
-use function Database\getAllUrls as getAllUrls;
-use function Database\getIdByUrl as getIdByUrl;
-use function Database\getUrlRowById as getUrlRowById;
-use function Database\getLastChecks;
-use function Database\getChecksByUrlId;
-use function Database\countUrlsByName;
-use function Database\insertNewUrl;
-use function Database\insertNewCheck;
+use function App\Database\getConnection;
+use function App\Database\getAllUrls;
+use function App\Database\getIdByUrl;
+use function App\Database\getUrlRowById;
+use function App\Database\getLastChecks;
+use function App\Database\getChecksByUrlId;
+use function App\Database\countUrlsByName;
+use function App\Database\insertNewUrl;
+use function App\Database\insertNewCheck;
 
 
 session_start();
@@ -143,8 +143,8 @@ $app->post('/urls', function ($request, $response) use ($router) {
     // поиск url в таблице urls, добавление, если его нет и редирект на страницу с url, если есть
     $current_time = date("Y-m-d H:i:s");
 
-    if ((countUrlsByName($pdo, $url)->fetch())['counts'] === 0) {
-        insertNewUrl($pdo, $scheme, $host, $current_time);
+    if (countUrlsByName($pdo, $url) > 0) {
+        insertNewUrl($pdo, $url, $current_time);
         $this->get('flash')->addMessage('success', 'Страница успешно добавлена');
     } else {
         $this->get('flash')->addMessage('success', 'Страница уже существует');
@@ -159,6 +159,7 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
     $pdo = getConnection();
     $id = $args['id'];
     $urlName = getUrlRowById($pdo, $id)['name'];
+    var_dump($id);
 
     $client = new Client(['base_uri' => $urlName]);
     try {

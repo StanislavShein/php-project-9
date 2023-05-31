@@ -159,7 +159,6 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
     $pdo = getConnection();
     $id = $args['id'];
     $urlName = getUrlRowById($pdo, $id)['name'];
-    var_dump($id);
 
     $client = new Client(['base_uri' => $urlName]);
     try {

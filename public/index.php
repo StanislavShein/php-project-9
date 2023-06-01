@@ -143,7 +143,7 @@ $app->post('/urls', function ($request, $response) use ($router) {
     // поиск url в таблице urls, добавление, если его нет и редирект на страницу с url, если есть
     $current_time = date("Y-m-d H:i:s");
 
-    if (countUrlsByName($pdo, $url) > 0) {
+    if (countUrlsByName($pdo, $url)['counts'] === 0) {
         insertNewUrl($pdo, $url, $current_time);
         $this->get('flash')->addMessage('success', 'Страница успешно добавлена');
     } else {

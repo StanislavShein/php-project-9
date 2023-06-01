@@ -35,7 +35,7 @@ function getConnection()
 
 function getAllUrls(\PDO $pdo)
 {
-    $query = "SELECT id, name FROM urls ORDER BY created_at DESC";
+    $query = 'SELECT id, name FROM urls ORDER BY created_at DESC';
     $result = $pdo->query($query);
 
     return $result->fetchAll(\PDO::FETCH_ASSOC);
@@ -43,9 +43,10 @@ function getAllUrls(\PDO $pdo)
 
 function getIdByUrl(\PDO $pdo, string $url): string
 {
-    $query = "SELECT id FROM urls WHERE name='{$url}'";
-    $result = $pdo->query($query);
-    $data = $result->fetch();
+    $query = 'SELECT id FROM urls WHERE name = ?';
+    $smtp = $pdo->prepare($query);
+    $smtp->execute([$url]);
+    $data = $smtp->fetch();
 
     return $data['id'];
 }
@@ -86,13 +87,13 @@ function countUrlsByName(\PDO $pdo, string $url)
     $stmt = $pdo->prepare($query);
     $stmt->execute([$url]);
 
-    return $stmt->fetchAll();
+    return $stmt->fetch();
 }
 
 function insertNewUrl(\PDO $pdo, string $url, string $current_time): void
 {
-    $query = "INSERT INTO urls (name, created_at)
-              VALUES (?, ?)";
+    $query = 'INSERT INTO urls (name, created_at)
+              VALUES (?, ?)';
     $stmt = $pdo->prepare($query);
     $stmt->execute([$url, $current_time]);
 }
@@ -106,7 +107,7 @@ function insertNewCheck(
     string $description,
     string $current_time
 ): void {
-    $query = "INSERT INTO url_checks (url_id, status_code, h1, title, description, created_at)
-              VALUES (?, ?, ?, ?, ?, ?)";
+    $query = 'INSERT INTO url_checks (url_id, status_code, h1, title, description, created_at)
+              VALUES (?, ?, ?, ?, ?, ?)';
     $pdo->prepare($query)->execute([$id, $statusCode, $h1, $title, $description, $current_time]);
 }

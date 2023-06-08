@@ -102,9 +102,9 @@ function insertNewCheck(
     \PDO $pdo,
     int $id,
     int|null $statusCode,
-    string $h1,
-    string $title,
-    string $description,
+    string|null $h1,
+    string|null $title,
+    string|null $description,
     string $current_time
 ): void {
     $query = 'INSERT INTO url_checks (url_id, status_code, h1, title, description, created_at)

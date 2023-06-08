@@ -29,6 +29,9 @@ $container->set('renderer', function () {
 $container->set('flash', function () {
     return new \Slim\Flash\Messages();
 });
+$container->set('pdo', function () {
+    return getConnection();
+});
 
 $app = AppFactory::createFromContainer($container);
 $app->addErrorMiddleware(true, true, true);
@@ -43,7 +46,7 @@ $app->get('/', function ($request, $response) {
 $app->get('/urls', function ($request, $response) {
     $messages = $this->get('flash')->getMessages();
 
-    $pdo = getConnection();
+    $pdo = $this->get('pdo');
 
     // запрос id url, имени url, даты последней проверки и статуса ответа
     $allUrls = getAllUrls($pdo);
@@ -71,7 +74,7 @@ $app->get('/urls', function ($request, $response) {
 $app->get('/urls/{id}', function ($request, $response, $args) {
     $messages = $this->get('flash')->getMessages();
 
-    $pdo = getConnection();
+    $pdo = $this->get('pdo');
     $id = $args['id'];
 
     // поиск строки с url по id
@@ -118,16 +121,14 @@ $app->post('/urls', function ($request, $response) use ($router) {
     $validator->rule('required', 'name')
               ->rule('url', 'name')
               ->rule('lengthMax', 'name', 255);
-    if (!($validator->validate())) {
-        $params = [
-            'invalidUrl' => true,
-            'inputtedUrl' => $inputtedUrlData['name']
-        ];
-        return $this->get('renderer')->render($response->withStatus(422), 'mainpage.phtml', $params);
-    }
 
-    if ($inputtedUrlData['name'] === '') {
-        $params = ['invalidUrl' => true, 'inputtedUrl' => ''];
+    if (!($validator->validate())) {
+        $invalidFeedback = $inputtedUrlData['name'] === '' ? 'URL не должен быть пустым' : 'Некорректный URL';
+        $invalidUrl = $inputtedUrlData['name'];
+        $params = [
+            'invalidFeedback' => $invalidFeedback,
+            'invalidUrl' => $invalidUrl
+        ];
 
         return $this->get('renderer')->render($response->withStatus(422), 'mainpage.phtml', $params);
     } else {
@@ -138,7 +139,7 @@ $app->post('/urls', function ($request, $response) use ($router) {
         $url = "{$scheme}://{$host}";
     }
 
-    $pdo = getConnection();
+    $pdo = $this->get('pdo');
 
     // поиск url в таблице urls, добавление, если его нет и редирект на страницу с url, если есть
     $current_time = date("Y-m-d H:i:s");
@@ -156,7 +157,8 @@ $app->post('/urls', function ($request, $response) use ($router) {
 
 $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($router) {
 
-    $pdo = getConnection();
+    $pdo = $this->get('pdo');
+    //$pdo = getConnection();
     $id = $args['id'];
     $urlName = getUrlRowById($pdo, $id)['name'];
 
@@ -172,13 +174,15 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
         return $response->withRedirect($router->urlFor('urls.show', ['id' => $id]));
     }
 
-    $body = (!is_null($responseUrl)) ? $responseUrl->getBody() : '';
+    $body = optional($responseUrl)->getBody();
+    //$body = (!is_null($responseUrl)) ? $responseUrl->getBody() : '';
     $document = new Document("{$body}");
 
-    $statusCode = (!is_null($responseUrl)) ? $responseUrl->getStatusCode() : null;
-    $h1 = (optional($document->first('h1'))->text()) ?? '';
-    $title = (optional($document->first('title'))->text()) ?? '';
-    $description = (optional($document->first('meta[name=description]'))->content) ?? '';
+    $statusCode = optional($responseUrl)->getStatusCode();
+    //$statusCode = (!is_null($responseUrl)) ? $responseUrl->getStatusCode() : null;
+    $h1 = (optional($document->first('h1'))->text());
+    $title = (optional($document->first('title'))->text());
+    $description = (optional($document->first('meta[name=description]'))->content);
     $current_time = date("Y-m-d H:i:s");
 
     // добавление информации о проверке

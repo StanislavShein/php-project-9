@@ -2,7 +2,6 @@
 
 <main class="flex-grow-1">
     <div class="container-lg mt-3">
-        <h1></h1>
         <div class="row">
             <div class="col-12 col-md-10 col-lg-8 mx-auto border rounded-3 bg-light p-5">
                 <h1 class="display-3">Анализатор страниц</h1>
@@ -12,20 +11,11 @@
                         <input
                             type="text"
                             name="url[name]"
-                            value="<?= isset($inputtedUrl) ? $inputtedUrl : ''; ?>"
+                            value="<?= isset($invalidUrl) ? $invalidUrl : ''; ?>"
                             class="form-control form-control-lg<?= isset($invalidUrl) ? ' is-invalid' : ''; ?>"
                             placeholder="https://www.example.com"
                         >
-                        <?php if (isset($invalidUrl) && ($inputtedUrl !== '')) : ?>
-                            <div class="invalid-feedback">
-                                Некорректный URL
-                            </div>
-                        <?php endif; ?>
-                        <?php if (isset($invalidUrl) && ($inputtedUrl === '')) : ?>
-                            <div class="invalid-feedback">
-                                URL не должен быть пустым
-                            </div>
-                        <?php endif; ?> 
+                        <div class="invalid-feedback"> <?= $invalidFeedback; ?></div>
                     </div>
                     <div class="col-2">
                         <input type="submit" class="btn btn-primary btn-lg ms-3 px-5 text-uppercase mx-3" value="Проверить">

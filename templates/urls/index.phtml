@@ -19,7 +19,7 @@
                             <?= $url['id'] ?>
                         </td>
                         <td>
-                            <a href="/urls/<?= $url['id'] ?>"><?= $url['name'] ?></a>
+                            <a href="<?= $router->urlFor('urls.show', ['id' => $url['id']]) ?>"><?= $url['name'] ?></a>
                         </td>
                         <td>
                             <?= $url['last_check_time'] ?? '' ?>

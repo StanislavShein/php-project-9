@@ -3,12 +3,12 @@
 require __DIR__ . '/../vendor/autoload.php';
 
 use Slim\Factory\AppFactory;
+use Slim\Routing\RouteContext;
 use DI\Container;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use DiDom\Document;
 use GuzzleHttp\Exception\ConnectException;
-use Illuminate\Support;
 use function App\Database\getConnection;
 use function App\Database\getAllUrls;
 use function App\Database\getIdByUrl;
@@ -32,18 +32,24 @@ $container->set('flash', function () {
 $container->set('pdo', function () {
     return getConnection();
 });
+$container->set('router', function ($container) {
+    return RouteContext::fromRequest($container->get('request'))->getRouteParser();
+});
 
 $app = AppFactory::createFromContainer($container);
 $app->addErrorMiddleware(true, true, true);
 
 $router = $app->getRouteCollector()->getRouteParser();
 
-$app->get('/', function ($request, $response) {
-    $params = ['activeMenu' => 'main'];
+$app->get('/', function ($request, $response) use ($router) {
+    $params = [
+        'activeMenu' => 'main',
+        'router' => $router
+    ];
     return $this->get('renderer')->render($response, 'mainpage.phtml', $params);
 })->setName('mainpage');
 
-$app->get('/urls', function ($request, $response) {
+$app->get('/urls', function ($request, $response) use ($router) {
     $messages = $this->get('flash')->getMessages();
 
     $pdo = $this->get('pdo');
@@ -65,13 +71,14 @@ $app->get('/urls', function ($request, $response) {
     $params = [
         'flash' => $messages,
         'urls' => $mix,
-        'activeMenu' => 'urls'
+        'activeMenu' => 'urls',
+        'router' => $router
     ];
 
     return $this->get('renderer')->render($response, 'urls/index.phtml', $params);
 })->setName('urls.index');
 
-$app->get('/urls/{id}', function ($request, $response, $args) {
+$app->get('/urls/{id}', function ($request, $response, $args) use ($router) {
     $messages = $this->get('flash')->getMessages();
 
     $pdo = $this->get('pdo');
@@ -90,14 +97,15 @@ $app->get('/urls/{id}', function ($request, $response, $args) {
             'id' => $id,
             'name' => $urlRow['name'],
             'created_at' => $urlRow['created_at']
-        ]
+        ],
+        'router' => $router
     ];
 
     // поиск всех проверок url по id
     $resultOfUrlChecks = getChecksByUrlId($pdo, $id);
-    $urlChecks = [];
+    $params['urlChecks'] = [];
     foreach ($resultOfUrlChecks as $row) {
-        $urlChecks[] = [
+        $params['urlChecks'][] = [
             'id' => $row['id'],
             'status_code' => $row['status_code'],
             'h1' => $row['h1'],
@@ -106,12 +114,12 @@ $app->get('/urls/{id}', function ($request, $response, $args) {
             'created_at' => $row['created_at']
         ];
     }
-    $params['urlChecks'] = $urlChecks;
 
     return $this->get('renderer')->render($response, 'urls/show.phtml', $params);
 })->setName('urls.show');
 
 $app->post('/urls', function ($request, $response) use ($router) {
+    $messages = $this->get('flash')->getMessages();
 
     // получение и парсинг url
     $inputtedUrlData = $request->getParsedBodyParam('url', null);
@@ -127,7 +135,8 @@ $app->post('/urls', function ($request, $response) use ($router) {
         $invalidUrl = $inputtedUrlData['name'];
         $params = [
             'invalidFeedback' => $invalidFeedback,
-            'invalidUrl' => $invalidUrl
+            'invalidUrl' => $invalidUrl,
+            'router' => $router
         ];
 
         return $this->get('renderer')->render($response->withStatus(422), 'mainpage.phtml', $params);
@@ -156,9 +165,9 @@ $app->post('/urls', function ($request, $response) use ($router) {
 })->setName('urls.store');
 
 $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($router) {
+    $messages = $this->get('flash')->getMessages();
 
     $pdo = $this->get('pdo');
-    //$pdo = getConnection();
     $id = $args['id'];
     $urlName = getUrlRowById($pdo, $id)['name'];
 
@@ -175,11 +184,9 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
     }
 
     $body = optional($responseUrl)->getBody();
-    //$body = (!is_null($responseUrl)) ? $responseUrl->getBody() : '';
     $document = new Document("{$body}");
 
     $statusCode = optional($responseUrl)->getStatusCode();
-    //$statusCode = (!is_null($responseUrl)) ? $responseUrl->getStatusCode() : null;
     $h1 = (optional($document->first('h1'))->text());
     $title = (optional($document->first('title'))->text());
     $description = (optional($document->first('meta[name=description]'))->content);

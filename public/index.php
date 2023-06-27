@@ -19,7 +19,6 @@ use function App\Database\countUrlsByName;
 use function App\Database\insertNewUrl;
 use function App\Database\insertNewCheck;
 
-
 session_start();
 
 $container = new Container();
@@ -58,7 +57,7 @@ $app->get('/urls', function ($request, $response) use ($router) {
     $allUrls = getAllUrls($pdo);
     $lastChecks = getLastChecks($pdo);
 
-    $mix = array_map(function ($url) use ($lastChecks) {
+    $urlChecksInfo = array_map(function ($url) use ($lastChecks) {
         foreach ($lastChecks as $check) {
             if ($url['id'] === $check['url_id']) {
                 $url['last_check_time'] = $check['created_at'];
@@ -70,7 +69,7 @@ $app->get('/urls', function ($request, $response) use ($router) {
 
     $params = [
         'flash' => $messages,
-        'urls' => $mix,
+        'urls' => $urlChecksInfo,
         'activeMenu' => 'urls',
         'router' => $router
     ];
@@ -82,30 +81,41 @@ $app->get('/urls/{id}', function ($request, $response, $args) use ($router) {
     $messages = $this->get('flash')->getMessages();
 
     $pdo = $this->get('pdo');
-    $id = $args['id'];
+    $id = (int)$args['id'];
+    if ($id === 0) {
+        $params = [
+            'activeMenu' => '',
+            'router' => $router
+        ];
+        return $this->get('renderer')->render($response, 'error404.phtml', $params);
+    }
 
     // поиск строки с url по id
-    $urlRow = getUrlRowById($pdo, $id);
+    $url = getUrlRowById($pdo, $id);
 
-    if (!$urlRow) {
-        return $this->get('renderer')->render($response, 'error404.phtml');
+    if (!$url) {
+        $params = [
+            'activeMenu' => '',
+            'router' => $router
+        ];
+        return $this->get('renderer')->render($response, 'error404.phtml', $params);
     }
 
     $params = [
         'flash' => $messages,
         'url' => [
             'id' => $id,
-            'name' => $urlRow['name'],
-            'created_at' => $urlRow['created_at']
+            'name' => $url['name'],
+            'created_at' => $url['created_at']
         ],
+        'activeMenu' => '',
         'router' => $router
     ];
 
     // поиск всех проверок url по id
     $resultOfUrlChecks = getChecksByUrlId($pdo, $id);
-    $params['urlChecks'] = [];
-    foreach ($resultOfUrlChecks as $row) {
-        $params['urlChecks'][] = [
+    $params['urlChecks'] = array_map(function ($row) {
+        return [
             'id' => $row['id'],
             'status_code' => $row['status_code'],
             'h1' => $row['h1'],
@@ -113,7 +123,7 @@ $app->get('/urls/{id}', function ($request, $response, $args) use ($router) {
             'description' => $row['description'],
             'created_at' => $row['created_at']
         ];
-    }
+    }, $resultOfUrlChecks);
 
     return $this->get('renderer')->render($response, 'urls/show.phtml', $params);
 })->setName('urls.show');
@@ -126,35 +136,36 @@ $app->post('/urls', function ($request, $response) use ($router) {
 
     // валидация url
     $validator = new Valitron\Validator($inputtedUrlData);
-    $validator->rule('required', 'name')
-              ->rule('url', 'name')
-              ->rule('lengthMax', 'name', 255);
+    $validator->rule('required', 'name')->message('URL не должен быть пустым');
+    $validator->rule('url', 'name')->message('Некорректный URL');
+    $validator->rule('lengthMax', 'name', 255)->message('Некорректный URL');
+    $validator->validate();
 
     if (!($validator->validate())) {
-        $invalidFeedback = $inputtedUrlData['name'] === '' ? 'URL не должен быть пустым' : 'Некорректный URL';
-        $invalidUrl = $inputtedUrlData['name'];
+        $errors = $validator->errors();
         $params = [
-            'invalidFeedback' => $invalidFeedback,
-            'invalidUrl' => $invalidUrl,
+            'invalidFeedback' => $errors['name'][0],
+            'invalidUrl' => $inputtedUrlData['name'],
+            'activeMenu' => '',
             'router' => $router
         ];
 
         return $this->get('renderer')->render($response->withStatus(422), 'mainpage.phtml', $params);
-    } else {
-        $inputtedUrl = $inputtedUrlData['name'];
-        $parsedUrl = parse_url($inputtedUrl);
-        $scheme = $parsedUrl['scheme'];
-        $host = $parsedUrl['host'];
-        $url = "{$scheme}://{$host}";
     }
+    
+    $inputtedUrl = $inputtedUrlData['name'];
+    $parsedUrl = parse_url($inputtedUrl);
+    $scheme = $parsedUrl['scheme'];
+    $host = $parsedUrl['host'];
+    $url = "{$scheme}://{$host}";
 
     $pdo = $this->get('pdo');
 
     // поиск url в таблице urls, добавление, если его нет и редирект на страницу с url, если есть
-    $current_time = date("Y-m-d H:i:s");
+    $currentTime = date("Y-m-d H:i:s");
 
     if (countUrlsByName($pdo, $url)['counts'] === 0) {
-        insertNewUrl($pdo, $url, $current_time);
+        insertNewUrl($pdo, $url, $currentTime);
         $this->get('flash')->addMessage('success', 'Страница успешно добавлена');
     } else {
         $this->get('flash')->addMessage('success', 'Страница уже существует');
@@ -190,10 +201,10 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
     $h1 = (optional($document->first('h1'))->text());
     $title = (optional($document->first('title'))->text());
     $description = (optional($document->first('meta[name=description]'))->content);
-    $current_time = date("Y-m-d H:i:s");
+    $currentTime = date("Y-m-d H:i:s");
 
     // добавление информации о проверке
-    insertNewCheck($pdo, $id, $statusCode, $h1, $title, $description, $current_time);
+    insertNewCheck($pdo, $id, $statusCode, $h1, $title, $description, $currentTime);
 
     return $response->withRedirect($router->urlFor('urls.show', ['id' => $id]), 302);
 })->setName('urls.id.check');

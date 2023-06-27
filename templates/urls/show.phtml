@@ -1,55 +1,55 @@
-<?php require __DIR__ . '/../header.phtml'; ?>
+<?= $this->fetch('header.phtml', ['activeMenu' => $activeMenu,'router' => $router]) ?>
 
-    <main class="flex-grow-1">
-        <div class="container-lg mt-3">
-            <h1>Сайт: <?= $url['name'] ?></h1>
-            <div class="table-responsive">
-                <table class="table table-bordered table-hover text-nowrap" data-test="url">
-                    <tbody>
-                        <tr>
-                            <td>ID</td>
-                            <td><?= $url['id'] ?></td>
-                        </tr>
-                        <tr>
-                            <td>Имя</td>
-                            <td><?= $url['name'] ?></td>
-                        </tr>
-                        <tr>
-                            <td>Дата создания</td>
-                            <td><?= $url['created_at'] ?></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            <h2 class="mt-5 mb-3">Проверки</h2>
-            <form method="post" action="<?= $router->urlFor('urls.id.check', ['id' => $url['id']]) ?>">
-                <input type="submit" class="btn btn-primary mb-3" value="Запустить проверку">
-            </form>
-            <table class="table table-bordered table-hover" data-test="checks">
+<main class="flex-grow-1">
+    <div class="container-lg mt-3">
+        <h1>Сайт: <?= $url['name'] ?></h1>
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover text-nowrap" data-test="url">
                 <tbody>
                     <tr>
-                        <th>ID</th>
-                        <th>Код ответа</th>
-                        <th>h1</th>
-                        <th>title</th>
-                        <th>description</th>
-                        <th>Дата создания</th>
+                        <td>ID</td>
+                        <td><?= $url['id'] ?></td>
                     </tr>
-                    <?php if (isset($urlChecks)) :
-                        foreach ($urlChecks as $check) : ?>
-                            <tr>
-                                <td><?= $check['id'] ?></td>
-                                <td><?= $check['status_code'] ?></td>
-                                <td><?= htmlspecialchars($check['h1'] ?? '') ?></td>
-                                <td><?= htmlspecialchars($check['title'] ?? '') ?></td>
-                                <td><?= htmlspecialchars($check['description'] ?? '') ?></td>
-                                <td><?= $check['created_at'] ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
+                    <tr>
+                        <td>Имя</td>
+                        <td><?= $url['name'] ?></td>
+                    </tr>
+                    <tr>
+                        <td>Дата создания</td>
+                        <td><?= $url['created_at'] ?></td>
+                    </tr>
                 </tbody>
             </table>
         </div>
-    </main>
+        <h2 class="mt-5 mb-3">Проверки</h2>
+        <form method="post" action="<?= $router->urlFor('urls.id.check', ['id' => $url['id']]) ?>">
+            <input type="submit" class="btn btn-primary mb-3" value="Запустить проверку">
+        </form>
+        <table class="table table-bordered table-hover" data-test="checks">
+            <tbody>
+                <tr>
+                    <th>ID</th>
+                    <th>Код ответа</th>
+                    <th>h1</th>
+                    <th>title</th>
+                    <th>description</th>
+                    <th>Дата создания</th>
+                </tr>
+                <?php if (isset($urlChecks)) :
+                    foreach ($urlChecks as $check) : ?>
+                        <tr>
+                            <td><?= $check['id'] ?></td>
+                            <td><?= $check['status_code'] ?></td>
+                            <td><?= htmlspecialchars($check['h1'] ?? '') ?></td>
+                            <td><?= htmlspecialchars($check['title'] ?? '') ?></td>
+                            <td><?= htmlspecialchars($check['description'] ?? '') ?></td>
+                            <td><?= $check['created_at'] ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+</main>
 
-<?php require __DIR__ . '/../footer.phtml'; ?>
+<?= $this->fetch('/footer.phtml') ?>

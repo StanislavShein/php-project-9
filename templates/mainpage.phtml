@@ -1,4 +1,4 @@
-<?php require 'header.phtml'; ?>
+<?= $this->fetch('header.phtml', ['activeMenu' => $activeMenu,'router' => $router]) ?>
 
 <main class="flex-grow-1">
     <div class="container-lg mt-3">
@@ -26,4 +26,4 @@
     </div>
 </main>
 
-<?php require 'footer.phtml'; ?>
+<?= $this->fetch('/footer.phtml') ?>

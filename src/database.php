@@ -51,7 +51,7 @@ function getIdByUrl(\PDO $pdo, string $url): string
     return $data['id'];
 }
 
-function getUrlRowById(\PDO $pdo, string $id)
+function getUrlRowById(\PDO $pdo, int $id)
 {
     $query = 'SELECT * FROM urls WHERE id= ?';
     $smtp = $pdo->prepare($query);

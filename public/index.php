@@ -144,7 +144,7 @@ $app->post('/urls', function ($request, $response) use ($router) {
     if (!($validator->validate())) {
         $errors = $validator->errors();
         $params = [
-            'invalidFeedback' => $errors['name'][0],
+            'errors' => $errors,
             'invalidUrl' => $inputtedUrlData['name'],
             'activeMenu' => '',
             'router' => $router
@@ -191,7 +191,7 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
         $responseUrl = $e->getResponse();
     } catch (ConnectException $e) {
         $this->get('flash')->addMessage('danger', 'Произошла ошибка при проверке, не удалось подключиться');
-        return $response->withRedirect($router->urlFor('urls.show', ['id' => $id]));
+        return $response->withRedirect($router->urlFor('urls.show', ['id' => (string)$id]));
     }
 
     $body = optional($responseUrl)->getBody();
@@ -206,7 +206,7 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
     // добавление информации о проверке
     insertNewCheck($pdo, $id, $statusCode, $h1, $title, $description, $currentTime);
 
-    return $response->withRedirect($router->urlFor('urls.show', ['id' => $id]), 302);
+    return $response->withRedirect($router->urlFor('urls.show', ['id' => (string)$id]), 302);
 })->setName('urls.id.check');
 
 $app->run();

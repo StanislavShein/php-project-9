@@ -152,7 +152,7 @@ $app->post('/urls', function ($request, $response) use ($router) {
 
         return $this->get('renderer')->render($response->withStatus(422), 'mainpage.phtml', $params);
     }
-    
+
     $inputtedUrl = $inputtedUrlData['name'];
     $parsedUrl = parse_url($inputtedUrl);
     $scheme = $parsedUrl['scheme'];
@@ -179,7 +179,7 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
     $messages = $this->get('flash')->getMessages();
 
     $pdo = $this->get('pdo');
-    $id = $args['id'];
+    $id = (int)$args['id'];
     $urlName = getUrlRowById($pdo, $id)['name'];
 
     $client = new Client(['base_uri' => $urlName]);

@@ -22,11 +22,12 @@ use function App\Database\insertNewCheck;
 session_start();
 
 $container = new Container();
-$container->set('renderer', function () {
-    return new \Slim\Views\PhpRenderer(__DIR__ . '/../templates');
-});
 $container->set('flash', function () {
     return new \Slim\Flash\Messages();
+});
+$container->set('renderer', function () use ($container) {
+    $messages = $container->get('flash')->getMessages();
+    return new \Slim\Views\PhpRenderer(__DIR__ . '/../templates', ['flash' => $messages]);
 });
 $container->set('pdo', function () {
     return getConnection();
@@ -45,12 +46,11 @@ $app->get('/', function ($request, $response) use ($router) {
         'activeMenu' => 'main',
         'router' => $router
     ];
+
     return $this->get('renderer')->render($response, 'mainpage.phtml', $params);
 })->setName('mainpage');
 
 $app->get('/urls', function ($request, $response) use ($router) {
-    $messages = $this->get('flash')->getMessages();
-
     $pdo = $this->get('pdo');
 
     // запрос id url, имени url, даты последней проверки и статуса ответа
@@ -68,7 +68,6 @@ $app->get('/urls', function ($request, $response) use ($router) {
     }, $allUrls);
 
     $params = [
-        'flash' => $messages,
         'urls' => $urlChecksInfo,
         'activeMenu' => 'urls',
         'router' => $router
@@ -78,8 +77,6 @@ $app->get('/urls', function ($request, $response) use ($router) {
 })->setName('urls.index');
 
 $app->get('/urls/{id}', function ($request, $response, $args) use ($router) {
-    $messages = $this->get('flash')->getMessages();
-
     $pdo = $this->get('pdo');
     $id = (int)$args['id'];
     if ($id === 0) {
@@ -102,7 +99,6 @@ $app->get('/urls/{id}', function ($request, $response, $args) use ($router) {
     }
 
     $params = [
-        'flash' => $messages,
         'url' => [
             'id' => $id,
             'name' => $url['name'],
@@ -129,8 +125,6 @@ $app->get('/urls/{id}', function ($request, $response, $args) use ($router) {
 })->setName('urls.show');
 
 $app->post('/urls', function ($request, $response) use ($router) {
-    $messages = $this->get('flash')->getMessages();
-
     // получение и парсинг url
     $inputtedUrlData = $request->getParsedBodyParam('url', null);
 
@@ -176,8 +170,6 @@ $app->post('/urls', function ($request, $response) use ($router) {
 })->setName('urls.store');
 
 $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($router) {
-    $messages = $this->get('flash')->getMessages();
-
     $pdo = $this->get('pdo');
     $id = (int)$args['id'];
     $urlName = getUrlRowById($pdo, $id)['name'];

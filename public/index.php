@@ -111,6 +111,7 @@ $app->get('/urls/{id}', function ($request, $response, $args) {
 
 $app->post('/urls', function ($request, $response) use ($router) {
     $inputtedUrlData = $request->getParsedBodyParam('url', null);
+    $inputtedUrl = strtolower($inputtedUrlData['name']);
 
     $validator = new Valitron\Validator($inputtedUrlData);
     $validator->rule('required', 'name')->message('URL не должен быть пустым');
@@ -120,10 +121,10 @@ $app->post('/urls', function ($request, $response) use ($router) {
 
     if (!($validator->validate())) {
         $errors = $validator->errors();
-        $errors['url'] = $inputtedUrlData['name'];
         $params = [
             'errors' => $errors,
-            'activeMenu' => ''
+            'inputtedUrl' => $inputtedUrl,
+            'activeMenu' => 'main'
         ];
 
         return $this->get('renderer')->render($response->withStatus(422), 'mainpage.phtml', $params);

@@ -25,10 +25,7 @@ $container = new Container();
 $container->set('flash', function () {
     return new \Slim\Flash\Messages();
 });
-$container->set('renderer', function () use ($container) {
-    $messages = $container->get('flash')->getMessages();
-    return new \Slim\Views\PhpRenderer(__DIR__ . '/../templates', ['flash' => $messages]);
-});
+
 $container->set('pdo', function () {
     return getConnection();
 });
@@ -41,19 +38,19 @@ $app->addErrorMiddleware(true, true, true);
 
 $router = $app->getRouteCollector()->getRouteParser();
 
-$app->get('/', function ($request, $response) use ($router) {
-    $params = [
-        'activeMenu' => 'main',
-        'router' => $router
-    ];
+$container->set('renderer', function () use ($container, $app) {
+    $messages = $container->get('flash')->getMessages();
+    $router = $app->getRouteCollector()->getRouteParser();
+    return new \Slim\Views\PhpRenderer(__DIR__ . '/../templates', ['flash' => $messages, 'router' => $router]);
+});
 
-    return $this->get('renderer')->render($response, 'mainpage.phtml', $params);
+$app->get('/', function ($request, $response) {
+    return $this->get('renderer')->render($response, 'mainpage.phtml', ['activeMenu' => 'main']);
 })->setName('mainpage');
 
-$app->get('/urls', function ($request, $response) use ($router) {
+$app->get('/urls', function ($request, $response) {
     $pdo = $this->get('pdo');
 
-    // запрос id url, имени url, даты последней проверки и статуса ответа
     $allUrls = getAllUrls($pdo);
     $lastChecks = getLastChecks($pdo);
 
@@ -69,33 +66,23 @@ $app->get('/urls', function ($request, $response) use ($router) {
 
     $params = [
         'urls' => $urlChecksInfo,
-        'activeMenu' => 'urls',
-        'router' => $router
+        'activeMenu' => 'urls'
     ];
 
     return $this->get('renderer')->render($response, 'urls/index.phtml', $params);
 })->setName('urls.index');
 
-$app->get('/urls/{id}', function ($request, $response, $args) use ($router) {
+$app->get('/urls/{id}', function ($request, $response, $args) {
     $pdo = $this->get('pdo');
     $id = (int)$args['id'];
-    if ($id === 0) {
-        $params = [
-            'activeMenu' => '',
-            'router' => $router
-        ];
-        return $this->get('renderer')->render($response, 'error404.phtml', $params);
-    }
-
-    // поиск строки с url по id
     $url = getUrlRowById($pdo, $id);
 
+    if ($id != $args['id']) {
+        $url = false;
+    }
+
     if (!$url) {
-        $params = [
-            'activeMenu' => '',
-            'router' => $router
-        ];
-        return $this->get('renderer')->render($response, 'error404.phtml', $params);
+        return $this->get('renderer')->render($response, 'error404.phtml', ['activeMenu' => '']);
     }
 
     $params = [
@@ -104,11 +91,9 @@ $app->get('/urls/{id}', function ($request, $response, $args) use ($router) {
             'name' => $url['name'],
             'created_at' => $url['created_at']
         ],
-        'activeMenu' => '',
-        'router' => $router
+        'activeMenu' => ''
     ];
 
-    // поиск всех проверок url по id
     $resultOfUrlChecks = getChecksByUrlId($pdo, $id);
     $params['urlChecks'] = array_map(function ($row) {
         return [
@@ -125,10 +110,8 @@ $app->get('/urls/{id}', function ($request, $response, $args) use ($router) {
 })->setName('urls.show');
 
 $app->post('/urls', function ($request, $response) use ($router) {
-    // получение и парсинг url
     $inputtedUrlData = $request->getParsedBodyParam('url', null);
 
-    // валидация url
     $validator = new Valitron\Validator($inputtedUrlData);
     $validator->rule('required', 'name')->message('URL не должен быть пустым');
     $validator->rule('url', 'name')->message('Некорректный URL');
@@ -137,25 +120,22 @@ $app->post('/urls', function ($request, $response) use ($router) {
 
     if (!($validator->validate())) {
         $errors = $validator->errors();
+        $errors['url'] = $inputtedUrlData['name'];
         $params = [
             'errors' => $errors,
-            'invalidUrl' => $inputtedUrlData['name'],
-            'activeMenu' => '',
-            'router' => $router
+            'activeMenu' => ''
         ];
 
         return $this->get('renderer')->render($response->withStatus(422), 'mainpage.phtml', $params);
     }
 
-    $inputtedUrl = $inputtedUrlData['name'];
+    $inputtedUrl = strtolower($inputtedUrlData['name']);
     $parsedUrl = parse_url($inputtedUrl);
     $scheme = $parsedUrl['scheme'];
     $host = $parsedUrl['host'];
     $url = "{$scheme}://{$host}";
 
     $pdo = $this->get('pdo');
-
-    // поиск url в таблице urls, добавление, если его нет и редирект на страницу с url, если есть
     $currentTime = date("Y-m-d H:i:s");
 
     if (countUrlsByName($pdo, $url)['counts'] === 0) {
@@ -195,7 +175,6 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
     $description = (optional($document->first('meta[name=description]'))->content);
     $currentTime = date("Y-m-d H:i:s");
 
-    // добавление информации о проверке
     insertNewCheck($pdo, $id, $statusCode, $h1, $title, $description, $currentTime);
 
     return $response->withRedirect($router->urlFor('urls.show', ['id' => (string)$id]), 302);

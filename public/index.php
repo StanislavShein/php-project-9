@@ -54,15 +54,11 @@ $app->get('/urls', function ($request, $response) {
     $allUrls = getAllUrls($pdo);
     $lastChecks = getLastChecks($pdo);
 
-    $urlChecksInfo = array_map(function ($url) use ($lastChecks) {
-        foreach ($lastChecks as $check) {
-            if ($url['id'] === $check['url_id']) {
-                $url['last_check_time'] = $check['created_at'];
-                $url['status_code'] = $check['status_code'];
-            }
-        }
-        return $url;
-    }, $allUrls);
+    $checksByUrlId = collect($lastChecks)->keyBy('url_id');
+
+    $urlChecksInfo = collect($allUrls)->map(function ($url) use ($checksByUrlId) {
+        return $url + $checksByUrlId->get($url['id'], []);
+    })->all();
 
     $params = [
         'urls' => $urlChecksInfo,

@@ -159,13 +159,13 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
         if ($responseUrl->getStatusCode() === 200) {
             $this->get('flash')->addMessage('success', 'Страница успешно проверена');
 
-            $body = $responseUrl->getBody();
-            $document = new \DiDom\Document($body);
+            $body = optional($responseUrl)->getBody();
+            $document = new Document("{$body}");
 
-            $statusCode = $responseUrl->getStatusCode();
-            $h1 = optional($document->first('h1'))->text();
-            $title = optional($document->first('title'))->text();
-            $description = optional($document->first('meta[name=description]'))->content;
+            $statusCode = optional($responseUrl)->getStatusCode();
+            $h1 = (optional($document->first('h1'))->text());
+            $title = (optional($document->first('title'))->text());
+            $description = (optional($document->first('meta[name=description]'))->content);
             $currentTime = date("Y-m-d H:i:s");
 
             insertNewCheck($pdo, $id, $statusCode, $h1, $title, $description, $currentTime);

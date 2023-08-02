@@ -152,9 +152,26 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
     $urlName = getUrlRowById($pdo, $id)['name'];
 
     $client = new Client(['base_uri' => $urlName]);
+
     try {
         $responseUrl = $client->request('GET', '/');
-        $this->get('flash')->addMessage('success', 'Страница успешно проверена');
+
+        if ($responseUrl->getStatusCode() === 200) {
+            $this->get('flash')->addMessage('success', 'Страница успешно проверена');
+
+            $body = $responseUrl->getBody();
+            $document = new \DiDom\Document($body);
+
+            $statusCode = $responseUrl->getStatusCode();
+            $h1 = optional($document->first('h1'))->text();
+            $title = optional($document->first('title'))->text();
+            $description = optional($document->first('meta[name=description]'))->content;
+            $currentTime = date("Y-m-d H:i:s");
+
+            insertNewCheck($pdo, $id, $statusCode, $h1, $title, $description, $currentTime);
+        } else {
+            $this->get('flash')->addMessage('warning', 'Проверка выполнена успешно, но сервер ответил с ошибкой');
+        }
     } catch (RequestException $e) {
         $this->get('flash')->addMessage('warning', 'Проверка выполнена успешно, но сервер ответил с ошибкой');
         $responseUrl = $e->getResponse();
@@ -162,17 +179,6 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
         $this->get('flash')->addMessage('danger', 'Произошла ошибка при проверке, не удалось подключиться');
         return $response->withRedirect($router->urlFor('urls.show', ['id' => (string)$id]));
     }
-
-    $body = optional($responseUrl)->getBody();
-    $document = new Document("{$body}");
-
-    $statusCode = optional($responseUrl)->getStatusCode();
-    $h1 = (optional($document->first('h1'))->text());
-    $title = (optional($document->first('title'))->text());
-    $description = (optional($document->first('meta[name=description]'))->content);
-    $currentTime = date("Y-m-d H:i:s");
-
-    insertNewCheck($pdo, $id, $statusCode, $h1, $title, $description, $currentTime);
 
     return $response->withRedirect($router->urlFor('urls.show', ['id' => (string)$id]), 302);
 })->setName('urls.id.check');

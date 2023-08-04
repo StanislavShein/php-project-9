@@ -4,20 +4,14 @@ require __DIR__ . '/../vendor/autoload.php';
 
 use Slim\Factory\AppFactory;
 use Slim\Routing\RouteContext;
+use Slim\Middleware\MethodOverrideMiddleware;
 use DI\Container;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use DiDom\Document;
 use GuzzleHttp\Exception\ConnectException;
-use function App\Database\getConnection;
-use function App\Database\getAllUrls;
-use function App\Database\getIdByUrl;
-use function App\Database\getUrlRowById;
-use function App\Database\getLastChecks;
-use function App\Database\getChecksByUrlId;
-use function App\Database\countUrlsByName;
-use function App\Database\insertNewUrl;
-use function App\Database\insertNewCheck;
+use function App\Database\{getConnection, getAllUrls, getIdByUrl, getUrlRowById, getLastChecks, getChecksByUrlId,
+    countUrlsByName, insertNewUrl, insertNewCheck};
 
 session_start();
 
@@ -34,14 +28,24 @@ $container->set('router', function ($container) {
 });
 
 $app = AppFactory::createFromContainer($container);
-$app->addErrorMiddleware(true, true, true);
+$app->add(MethodOverrideMiddleware::class);
+$errorMiddleware = $app->addErrorMiddleware(true, true, true);
+$customErrorHandler = function () use ($app) {
+    $response = $app->getResponseFactory()->createResponse();
+    return $this->get('renderer')->render($response, "error404.phtml", ['activeMenu' => '']);
+};
+$errorMiddleware->setDefaultErrorHandler($customErrorHandler);
 
 $router = $app->getRouteCollector()->getRouteParser();
 
 $container->set('renderer', function () use ($container, $app) {
     $messages = $container->get('flash')->getMessages();
     $router = $app->getRouteCollector()->getRouteParser();
-    return new \Slim\Views\PhpRenderer(__DIR__ . '/../templates', ['flash' => $messages, 'router' => $router]);
+
+    $phpView = new \Slim\Views\PhpRenderer(__DIR__ . '/../templates', ['flash' => $messages, 'router' => $router]);
+    $phpView->setLayout('layout.phtml');
+
+    return $phpView;
 });
 
 $app->get('/', function ($request, $response) {
@@ -155,30 +159,25 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) use ($rout
 
     try {
         $responseUrl = $client->request('GET', '/');
-
-        if ($responseUrl->getStatusCode() === 200) {
-            $this->get('flash')->addMessage('success', 'Страница успешно проверена');
-
-            $body = optional($responseUrl)->getBody();
-            $document = new Document("{$body}");
-
-            $statusCode = optional($responseUrl)->getStatusCode();
-            $h1 = (optional($document->first('h1'))->text());
-            $title = (optional($document->first('title'))->text());
-            $description = (optional($document->first('meta[name=description]'))->content);
-            $currentTime = date("Y-m-d H:i:s");
-
-            insertNewCheck($pdo, $id, $statusCode, $h1, $title, $description, $currentTime);
-        } else {
-            $this->get('flash')->addMessage('warning', 'Проверка выполнена успешно, но сервер ответил с ошибкой');
-        }
+        $this->get('flash')->addMessage('success', 'Страница успешно проверена');
     } catch (RequestException $e) {
-        $this->get('flash')->addMessage('warning', 'Проверка выполнена успешно, но сервер ответил с ошибкой');
         $responseUrl = $e->getResponse();
+        $this->get('flash')->addMessage('warning', 'Проверка выполнена успешно, но сервер ответил с ошибкой');
     } catch (ConnectException $e) {
         $this->get('flash')->addMessage('danger', 'Произошла ошибка при проверке, не удалось подключиться');
         return $response->withRedirect($router->urlFor('urls.show', ['id' => (string)$id]));
     }
+
+    $body = optional($responseUrl)->getBody();
+    $document = new Document("{$body}");
+
+    $statusCode = optional($responseUrl)->getStatusCode();
+    $h1 = (optional($document->first('h1'))->text());
+    $title = (optional($document->first('title'))->text());
+    $description = (optional($document->first('meta[name=description]'))->content);
+    $currentTime = date("Y-m-d H:i:s");
+
+    insertNewCheck($pdo, $id, $statusCode, $h1, $title, $description, $currentTime);
 
     return $response->withRedirect($router->urlFor('urls.show', ['id' => (string)$id]), 302);
 })->setName('urls.id.check');

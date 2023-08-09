@@ -3,13 +3,14 @@
 require __DIR__ . '/../vendor/autoload.php';
 
 use Slim\Factory\AppFactory;
-use Slim\Routing\RouteContext;
 use Slim\Middleware\MethodOverrideMiddleware;
+use Slim\Views\PhpRenderer;
 use DI\Container;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
-use DiDom\Document;
 use GuzzleHttp\Exception\ConnectException;
+use DiDom\Document;
+
 use function App\Database\{getConnection, getAllUrls, getIdByUrl, getUrlRowById, getLastChecks, getChecksByUrlId,
     countUrlsByName, insertNewUrl, insertNewCheck};
 
@@ -23,34 +24,29 @@ $container->set('flash', function () {
 $container->set('pdo', function () {
     return getConnection();
 });
-$container->set('router', function ($container) {
-    return RouteContext::fromRequest($container->get('request'))->getRouteParser();
-});
 
 $app = AppFactory::createFromContainer($container);
+
+$container->set('router', $app->getRouteCollector()->getRouteParser());
 $app->add(MethodOverrideMiddleware::class);
 $errorMiddleware = $app->addErrorMiddleware(true, true, true);
 $customErrorHandler = function () use ($app) {
     $response = $app->getResponseFactory()->createResponse();
-    return $this->get('renderer')->render($response, "error404.phtml", ['activeMenu' => '']);
+    return $this->get('renderer')->render($response, "error/404.phtml", ['activeMenu' => '']);
 };
-$errorMiddleware->setDefaultErrorHandler($customErrorHandler);
-
-$router = $app->getRouteCollector()->getRouteParser();
 
 $container->set('renderer', function () use ($container, $app) {
     $messages = $container->get('flash')->getMessages();
-    $router = $app->getRouteCollector()->getRouteParser();
-
-    $phpView = new \Slim\Views\PhpRenderer(__DIR__ . '/../templates', ['flash' => $messages, 'router' => $router]);
+    $phpView = new PhpRenderer(__DIR__ . '/../templates', ['flash' => $messages]);
+    $phpView->addAttribute('router', $container->get('router'));
     $phpView->setLayout('layout.phtml');
 
     return $phpView;
 });
 
 $app->get('/', function ($request, $response) {
-    return $this->get('renderer')->render($response, 'mainpage.phtml', ['activeMenu' => 'main']);
-})->setName('mainpage');
+    return $this->get('renderer')->render($response, 'mainpage/index.phtml', ['activeMenu' => 'main']);
+})->setName('mainpage.index');
 
 $app->get('/urls', function ($request, $response) {
     $pdo = $this->get('pdo');
@@ -82,7 +78,7 @@ $app->get('/urls/{id}', function ($request, $response, $args) {
     }
 
     if (!$url) {
-        return $this->get('renderer')->render($response, 'error404.phtml', ['activeMenu' => '']);
+        return $this->get('renderer')->render($response, 'errors/404.phtml', ['activeMenu' => '']);
     }
 
     $params = [
@@ -109,7 +105,7 @@ $app->get('/urls/{id}', function ($request, $response, $args) {
     return $this->get('renderer')->render($response, 'urls/show.phtml', $params);
 })->setName('urls.show');
 
-$app->post('/urls', function ($request, $response) use ($router) {
+$app->post('/urls', function ($request, $response) {
     $inputtedUrlData = $request->getParsedBodyParam('url', null);
     $inputtedUrl = strtolower($inputtedUrlData['name']);
 
@@ -127,7 +123,7 @@ $app->post('/urls', function ($request, $response) use ($router) {
             'activeMenu' => 'main'
         ];
 
-        return $this->get('renderer')->render($response->withStatus(422), 'mainpage.phtml', $params);
+        return $this->get('renderer')->render($response->withStatus(422), 'mainpage/index.phtml', $params);
     }
 
     $inputtedUrl = strtolower($inputtedUrlData['name']);
@@ -147,39 +143,43 @@ $app->post('/urls', function ($request, $response) use ($router) {
     }
 
     $id = getIdByUrl($pdo, $url);
-    return $response->withRedirect($router->urlFor('urls.show', ['id' => $id]));
+    return $response->withRedirect($this->get('router')->urlFor('urls.show', ['id' => $id]));
 })->setName('urls.store');
 
-$app->post('/urls/{id}/checks', function ($request, $response, $args) use ($router) {
+$app->post('/urls/{id}/checks', function ($request, $response, $args) {
     $pdo = $this->get('pdo');
     $id = (int)$args['id'];
     $urlName = getUrlRowById($pdo, $id)['name'];
 
-    $client = new Client(['base_uri' => $urlName]);
+    $client = new Client();
 
     try {
-        $responseUrl = $client->request('GET', '/');
+        $responseUrl = $client->get($urlName);
         $this->get('flash')->addMessage('success', 'Страница успешно проверена');
     } catch (RequestException $e) {
         $responseUrl = $e->getResponse();
+        if (is_null($responseUrl)) {
+            return $this->get('renderer')->render($response, "errors/500.phtml", ['activeMenu' => '']);
+        }
         $this->get('flash')->addMessage('warning', 'Проверка выполнена успешно, но сервер ответил с ошибкой');
     } catch (ConnectException $e) {
         $this->get('flash')->addMessage('danger', 'Произошла ошибка при проверке, не удалось подключиться');
-        return $response->withRedirect($router->urlFor('urls.show', ['id' => (string)$id]));
+        return $response->withRedirect($this->get('router')->urlFor('urls.show', ['id' => (string)$id]));
     }
 
-    $body = optional($responseUrl)->getBody();
-    $document = new Document("{$body}");
+
+    $body = !is_null($responseUrl) ? $responseUrl->getBody() : '';
+    $document = !is_null($responseUrl) ? new Document((string) $body) : '';
 
     $statusCode = optional($responseUrl)->getStatusCode();
-    $h1 = (optional($document->first('h1'))->text());
-    $title = (optional($document->first('title'))->text());
-    $description = (optional($document->first('meta[name=description]'))->content);
+    $h1 = !is_null($responseUrl) ? (optional($document->first('h1'))->text()) : '';
+    $title = !is_null($responseUrl) ? (optional($document->first('title'))->text()) : '';
+    $description = !is_null($responseUrl) ? (optional($document->first('meta[name=description]'))->content) : '';
     $currentTime = date("Y-m-d H:i:s");
 
     insertNewCheck($pdo, $id, $statusCode, $h1, $title, $description, $currentTime);
 
-    return $response->withRedirect($router->urlFor('urls.show', ['id' => (string)$id]), 302);
+    return $response->withRedirect($this->get('router')->urlFor('urls.show', ['id' => (string)$id]), 302);
 })->setName('urls.id.check');
 
 $app->run();

@@ -9,8 +9,8 @@
     </head>
 
     <body class="min-vh-100 d-flex flex-column">
-        <?= $this->fetch('header.phtml', ['activeMenu' => $activeMenu]) ?>
+        <?= $this->fetch('components/header.phtml', ['activeMenu' => $activeMenu]) ?>
         <?= $content ?>
-        <?= $this->fetch('footer.phtml') ?>
+        <?= $this->fetch('components/footer.phtml') ?>
     </body>
 </html>

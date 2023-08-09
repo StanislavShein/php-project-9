@@ -35,7 +35,7 @@ $customErrorHandler = function () use ($app) {
     return $this->get('renderer')->render($response, "error/404.phtml", ['activeMenu' => '']);
 };
 
-$container->set('renderer', function () use ($container, $app) {
+$container->set('renderer', function () use ($container) {
     $messages = $container->get('flash')->getMessages();
     $phpView = new PhpRenderer(__DIR__ . '/../templates', ['flash' => $messages]);
     $phpView->addAttribute('router', $container->get('router'));
@@ -168,13 +168,13 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) {
     }
 
 
-    $body = !is_null($responseUrl) ? $responseUrl->getBody() : '';
-    $document = !is_null($responseUrl) ? new Document((string) $body) : '';
+    $body = $responseUrl->getBody();
+    $document = new Document((string) $body);
 
     $statusCode = optional($responseUrl)->getStatusCode();
-    $h1 = !is_null($responseUrl) ? (optional($document->first('h1'))->text()) : '';
-    $title = !is_null($responseUrl) ? (optional($document->first('title'))->text()) : '';
-    $description = !is_null($responseUrl) ? (optional($document->first('meta[name=description]'))->content) : '';
+    $h1 = optional($document->first('h1'))->text();
+    $title = optional($document->first('title'))->text();
+    $description = !optional($document->first('meta[name=description]'))->content;
     $currentTime = date("Y-m-d H:i:s");
 
     insertNewCheck($pdo, $id, $statusCode, $h1, $title, $description, $currentTime);

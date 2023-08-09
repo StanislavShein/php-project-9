@@ -174,7 +174,7 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) {
     $statusCode = optional($responseUrl)->getStatusCode();
     $h1 = optional($document->first('h1'))->text();
     $title = optional($document->first('title'))->text();
-    $description = !optional($document->first('meta[name=description]'))->content;
+    $description = optional($document->first('meta[name=description]'))->content;
     $currentTime = date("Y-m-d H:i:s");
 
     insertNewCheck($pdo, $id, $statusCode, $h1, $title, $description, $currentTime);

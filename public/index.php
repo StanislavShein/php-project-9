@@ -30,14 +30,10 @@ $app = AppFactory::createFromContainer($container);
 $container->set('router', $app->getRouteCollector()->getRouteParser());
 $app->add(MethodOverrideMiddleware::class);
 $errorMiddleware = $app->addErrorMiddleware(true, true, true);
-$customErrorHandler = function () use ($app) {
-    $response = $app->getResponseFactory()->createResponse();
-    return $this->get('renderer')->render($response, "error/404.phtml", ['activeMenu' => '']);
-};
 
 $container->set('renderer', function () use ($container) {
-    $messages = $container->get('flash')->getMessages();
-    $phpView = new PhpRenderer(__DIR__ . '/../templates', ['flash' => $messages]);
+    $phpView = new PhpRenderer(__DIR__ . '/../templates');
+    $phpView->addAttribute('flash', $container->get('flash')->getMessages());
     $phpView->addAttribute('router', $container->get('router'));
     $phpView->setLayout('layout.phtml');
 
@@ -57,7 +53,7 @@ $app->get('/urls', function ($request, $response) {
     $checksByUrlId = collect($lastChecks)->keyBy('url_id');
 
     $urlChecksInfo = collect($allUrls)->map(function ($url) use ($checksByUrlId) {
-        return $url + $checksByUrlId->get($url['id'], []);
+        return array_merge($url, $checksByUrlId->get($url['id'], []));
     })->all();
 
     $params = [
@@ -68,14 +64,10 @@ $app->get('/urls', function ($request, $response) {
     return $this->get('renderer')->render($response, 'urls/index.phtml', $params);
 })->setName('urls.index');
 
-$app->get('/urls/{id}', function ($request, $response, $args) {
+$app->get('/urls/{id:[0-9]+}', function ($request, $response, $args) {
     $pdo = $this->get('pdo');
     $id = (int)$args['id'];
     $url = getUrlRowById($pdo, $id);
-
-    if ($id != $args['id']) {
-        $url = false;
-    }
 
     if (!$url) {
         return $this->get('renderer')->render($response, 'errors/404.phtml', ['activeMenu' => '']);
@@ -181,5 +173,9 @@ $app->post('/urls/{id}/checks', function ($request, $response, $args) {
 
     return $response->withRedirect($this->get('router')->urlFor('urls.show', ['id' => (string)$id]), 302);
 })->setName('urls.id.check');
+
+$app->map(['GET', 'POST'], '/{routes:.+}', function ($request, $response) {
+    return $this->get('renderer')->render($response, 'errors/404.phtml', ['activeMenu' => '']);
+})->setName('not-found');
 
 $app->run();

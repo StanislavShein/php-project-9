@@ -15,20 +15,11 @@ use function App\Database\getConnection;
 session_start();
 
 $container = new Container();
-$container->set('flash', function () {
-    return new \Slim\Flash\Messages();
-});
-
-$container->set('pdo', function () {
-    return getConnection();
-});
-
 $app = AppFactory::createFromContainer($container);
 
+$container->set('flash', new \Slim\Flash\Messages());
+$container->set('pdo', getConnection());
 $container->set('router', $app->getRouteCollector()->getRouteParser());
-$app->add(MethodOverrideMiddleware::class);
-$errorMiddleware = $app->addErrorMiddleware(true, true, true);
-
 $container->set('renderer', function () use ($container) {
     $phpView = new PhpRenderer(__DIR__ . '/../templates');
     $phpView->addAttribute('flash', $container->get('flash')->getMessages());
@@ -37,6 +28,9 @@ $container->set('renderer', function () use ($container) {
 
     return $phpView;
 });
+
+$app->add(MethodOverrideMiddleware::class);
+$errorMiddleware = $app->addErrorMiddleware(true, true, true);
 
 $app->get('/', function ($request, $response) {
     return $this->get('renderer')->render($response, 'mainpage/index.phtml', ['activeMenu' => 'main']);

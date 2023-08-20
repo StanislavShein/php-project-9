@@ -2,18 +2,8 @@
 
 namespace App\Database;
 
-use Dotenv\Dotenv;
-
-function getConnection()
+function getConnection(array $databaseUrl)
 {
-    $dotenv = Dotenv::createImmutable(__DIR__ . '/../');
-    $dotenv->safeLoad();
-
-    $databaseUrl = parse_url($_ENV['DATABASE_URL']);
-    if (!$databaseUrl) {
-        throw new \Exception('Ошибочный запрос к конфигурации базы данных');
-    }
-
     $dbHost = $databaseUrl['host'];
     $dbPort = $databaseUrl['port'];
     $dbName = ltrim($databaseUrl['path'], '/');

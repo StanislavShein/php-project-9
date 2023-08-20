@@ -10,6 +10,7 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Exception\ConnectException;
 use DiDom\Document;
+use Dotenv\Dotenv;
 use function App\Database\getConnection;
 
 session_start();
@@ -18,7 +19,20 @@ $container = new Container();
 $app = AppFactory::createFromContainer($container);
 
 $container->set('flash', new \Slim\Flash\Messages());
-$container->set('pdo', getConnection());
+
+$container->set('pdo', function () {
+    $dotenv = Dotenv::createImmutable(__DIR__ . '/../');
+    $dotenv->safeLoad();
+
+    $databaseUrl = parse_url($_ENV['DATABASE_URL']);
+    if (!$databaseUrl) {
+        throw new \Exception('Ошибочный запрос к конфигурации базы данных');
+    }
+
+    return getConnection($databaseUrl);
+});
+
+
 $container->set('router', $app->getRouteCollector()->getRouteParser());
 $container->set('renderer', function () use ($container) {
     $phpView = new PhpRenderer(__DIR__ . '/../templates');
@@ -134,27 +148,24 @@ $app->post('/urls', function ($request, $response) {
     $pdo = $this->get('pdo');
     $currentTime = date("Y-m-d H:i:s");
 
-    $countUrlsByNameQuery = 'SELECT COUNT(*) AS counts FROM urls WHERE name = ?';
-    $countUrlsByNameStmt = $pdo->prepare($countUrlsByNameQuery);
-    $countUrlsByNameStmt->execute([$url]);
-    $countUrlsByName = $countUrlsByNameStmt->fetch();
+    $urlExistsQuery = 'SELECT id FROM urls WHERE name = ?';
+    $urlExistsStmt = $pdo->prepare($urlExistsQuery);
+    $urlExistsStmt->execute([$url]);
+    $urlExists = $urlExistsStmt->fetch(\PDO::FETCH_COLUMN);
 
-    if ($countUrlsByName['counts'] === 0) {
+    if ($urlExists) {
+        $this->get('flash')->addMessage('success', 'Страница уже существует');
+        $id = $urlExists;
+    } else {
         $insertNewUrlQuery = 'INSERT INTO urls (name, created_at)
                               VALUES (?, ?)';
         $insertNewUrlStmt = $pdo->prepare($insertNewUrlQuery);
         $insertNewUrlStmt->execute([$url, $currentTime]);
         $this->get('flash')->addMessage('success', 'Страница успешно добавлена');
-    } else {
-        $this->get('flash')->addMessage('success', 'Страница уже существует');
+        $id = $this->get('pdo')->lastInsertId();
     }
 
-    $idByUrlQuery = 'SELECT id FROM urls WHERE name = ?';
-    $idByUrlStmt = $pdo->prepare($idByUrlQuery);
-    $idByUrlStmt->execute([$url]);
-    $id = $idByUrlStmt->fetch()['id'];
-
-    return $response->withRedirect($this->get('router')->urlFor('urls.show', ['id' => $id]));
+    return $response->withRedirect($this->get('router')->urlFor('urls.show', ['id' => $id]), 301);
 })->setName('urls.store');
 
 $app->post('/urls/{id:[0-9]+}/checks', function ($request, $response, $args) {
@@ -195,7 +206,7 @@ $app->post('/urls/{id:[0-9]+}/checks', function ($request, $response, $args) {
                       VALUES (?, ?, ?, ?, ?, ?)';
     $pdo->prepare($newCheckQuery)->execute([$id, $statusCode, $h1, $title, $description, $currentTime]);
 
-    return $response->withRedirect($this->get('router')->urlFor('urls.show', ['id' => (string)$id]), 302);
+    return $response->withRedirect($this->get('router')->urlFor('urls.show', ['id' => (string)$id]), 301);
 })->setName('urls.id.check');
 
 $app->map(['GET', 'POST'], '/{routes:.+}', function ($request, $response) {
